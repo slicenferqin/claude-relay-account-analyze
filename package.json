@@ -1,0 +1,30 @@
+{
+  "name": "account-dashboard",
+  "version": "1.0.0",
+  "description": "Redis Account Dashboard - A real-time monitoring dashboard for API keys and account statistics",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=packages/backend",
+    "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "build": "npm run build --workspace=packages/backend && npm run build --workspace=packages/frontend",
+    "build:backend": "npm run build --workspace=packages/backend",
+    "build:frontend": "npm run build --workspace=packages/frontend",
+    "start": "npm run start --workspace=packages/backend",
+    "lint": "npm run lint --workspace=packages/backend && npm run lint --workspace=packages/frontend",
+    "test": "npm run test --workspace=packages/backend && npm run test --workspace=packages/frontend",
+    "clean": "rm -rf packages/*/node_modules packages/*/dist node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

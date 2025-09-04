@@ -1,0 +1,368 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AccountService = void 0;
+const shared_1 = require("@account-dashboard/shared");
+const redis_1 = require("../config/redis");
+const logger_1 = require("../utils/logger");
+class AccountService {
+    /**
+     * 获取账户基本信息
+     */
+    async getAccountInfo(accountId) {
+        try {
+            // 尝试多种可能的key格式
+            const keyPatterns = [
+                `claude_console_account:${accountId}`,
+                `claude_account:${accountId}`,
+                `claude:account:${accountId}`,
+                `gemini_account:${accountId}`,
+                `openai:account:${accountId}`,
+                `bedrock_account:${accountId}`,
+                `azure_openai:account:${accountId}`
+            ];
+            for (const key of keyPatterns) {
+                const data = await redis_1.redisClient.hgetall(key);
+                if (Object.keys(data).length > 0) {
+                    return {
+                        id: data.id || accountId,
+                        name: data.name || '',
+                        description: data.description || '',
+                        email: data.email || '',
+                        platform: this.extractPlatformFromKey(key),
+                        isActive: data.isActive === 'true',
+                        lastUsedAt: data.lastUsedAt || '',
+                        lastRefreshAt: data.lastRefreshAt || '',
+                        status: data.status || 'created',
+                        accountType: data.accountType || 'dedicated',
+                        priority: parseInt(data.priority || '50'),
+                        schedulable: data.schedulable === 'true',
+                        autoStopOnWarning: data.autoStopOnWarning === 'true',
+                        proxy: data.proxy || '',
+                        createdAt: data.createdAt || '',
+                        errorMessage: data.errorMessage || '',
+                        apiUrl: data.apiUrl || '',
+                        rateLimitDuration: data.rateLimitDuration ? parseInt(data.rateLimitDuration) : undefined,
+                        rateLimitStatus: data.rateLimitStatus || '',
+                        rateLimitedAt: data.rateLimitedAt || ''
+                    };
+                }
+            }
+            return null;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error getting account info for ${accountId}:`, error);
+            throw error;
+        }
+    }
+    /**
+     * 从key中提取平台信息
+     */
+    extractPlatformFromKey(key) {
+        if (key.includes('claude_console'))
+            return 'claude-console';
+        if (key.includes('claude'))
+            return 'claude';
+        if (key.includes('gemini'))
+            return 'gemini';
+        if (key.includes('openai') && !key.includes('azure'))
+            return 'openai';
+        if (key.includes('bedrock'))
+            return 'bedrock';
+        if (key.includes('azure_openai'))
+            return 'azure-openai';
+        return 'claude';
+    }
+    /**
+     * 获取账户使用统计
+     */
+    async getAccountUsage(accountId, dateStr) {
+        try {
+            const dailyKey = `account_usage:daily:${accountId}:${dateStr}`;
+            const data = await redis_1.redisClient.hgetall(dailyKey);
+            return {
+                tokens: parseInt(data.tokens || '0'),
+                inputTokens: parseInt(data.inputTokens || '0'),
+                outputTokens: parseInt(data.outputTokens || '0'),
+                cacheCreateTokens: parseInt(data.cacheCreateTokens || '0'),
+                cacheReadTokens: parseInt(data.cacheReadTokens || '0'),
+                allTokens: parseInt(data.allTokens || '0'),
+                requests: parseInt(data.requests || '0')
+            };
+        }
+        catch (error) {
+            logger_1.logger.error(`Error getting account usage for ${accountId}:`, error);
+            return {
+                tokens: 0,
+                inputTokens: 0,
+                outputTokens: 0,
+                allTokens: 0,
+                requests: 0
+            };
+        }
+    }
+    /**
+     * 计算账户的近期RPM
+     */
+    async calculateAccountRPM(accountId, minutes = 10) {
+        try {
+            const now = new Date();
+            const commands = [];
+            for (let i = 0; i < minutes; i++) {
+                const time = new Date(now.getTime() - i * 60 * 1000);
+                const dateStr = (0, shared_1.formatDate)(time);
+                const hour = time.getHours().toString().padStart(2, '0');
+                const hourlyKey = `account_usage:hourly:${accountId}:${dateStr}:${hour}`;
+                commands.push(['hget', hourlyKey, 'requests']);
+            }
+            const results = await redis_1.redisClient.pipeline(commands);
+            const totalRequests = results.reduce((sum, result) => {
+                const requests = parseInt(result || '0');
+                return sum + requests;
+            }, 0);
+            return Math.round(totalRequests / minutes);
+        }
+        catch (error) {
+            logger_1.logger.error(`Error calculating account RPM for ${accountId}:`, error);
+            return 0;
+        }
+    }
+    /**
+     * 获取账户关联的API Keys并计算费用
+     */
+    async calculateAccountDailyCost(accountId, date) {
+        try {
+            // 查找关联到此账户的所有API Keys
+            const apiKeys = await this.getAccountApiKeys(accountId);
+            const costPromises = apiKeys.map(async (keyId) => {
+                const costKey = `usage:cost:daily:${keyId}:${date}`;
+                const cost = await redis_1.redisClient.get(costKey);
+                return parseFloat(cost || '0');
+            });
+            const costs = await Promise.all(costPromises);
+            return costs.reduce((sum, cost) => sum + cost, 0);
+        }
+        catch (error) {
+            logger_1.logger.error(`Error calculating account daily cost for ${accountId}:`, error);
+            return 0;
+        }
+    }
+    /**
+     * 获取账户关联的API Keys
+     */
+    async getAccountApiKeys(accountId) {
+        try {
+            const allApiKeys = await redis_1.redisClient.scanKeys('apikey:*');
+            const relatedKeys = [];
+            for (const keyPath of allApiKeys) {
+                const keyId = keyPath.replace('apikey:', '');
+                const keyData = await redis_1.redisClient.hget(keyPath, 'claudeAccountId');
+                if (keyData === accountId || keyData === `group:${accountId}`) {
+                    relatedKeys.push(keyId);
+                }
+            }
+            return relatedKeys;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error getting account API keys for ${accountId}:`, error);
+            return [];
+        }
+    }
+    /**
+     * 获取账户所属分组
+     */
+    async getAccountGroup(accountId) {
+        try {
+            const allGroups = await redis_1.redisClient.smembers('account_groups');
+            for (const groupId of allGroups) {
+                const members = await redis_1.redisClient.smembers(`account_group_members:${groupId}`);
+                if (members.includes(accountId)) {
+                    const groupInfo = await redis_1.redisClient.hgetall(`account_group:${groupId}`);
+                    const activeMembers = await this.countActiveGroupMembers(members);
+                    return {
+                        id: groupId,
+                        name: groupInfo.name || '',
+                        totalMembers: members.length,
+                        activeMembers
+                    };
+                }
+            }
+            return undefined;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error getting account group for ${accountId}:`, error);
+            return undefined;
+        }
+    }
+    /**
+     * 计算分组中的活跃成员数（近10分钟有活动）
+     */
+    async countActiveGroupMembers(memberIds) {
+        try {
+            const now = Date.now();
+            const tenMinutesAgo = now - 10 * 60 * 1000;
+            let activeCount = 0;
+            const promises = memberIds.map(async (memberId) => {
+                const account = await this.getAccountInfo(memberId);
+                if (account && account.lastUsedAt) {
+                    const lastUsed = new Date(account.lastUsedAt).getTime();
+                    return lastUsed > tenMinutesAgo;
+                }
+                return false;
+            });
+            const results = await Promise.all(promises);
+            return results.filter(Boolean).length;
+        }
+        catch (error) {
+            logger_1.logger.error('Error counting active group members:', error);
+            return 0;
+        }
+    }
+    /**
+     * 获取完整的账户统计信息
+     */
+    async getAccountStatistics(accountId) {
+        try {
+            const today = (0, shared_1.formatDate)(new Date());
+            const [info, todayUsage, recentRpm, todayCost, group] = await Promise.all([
+                this.getAccountInfo(accountId),
+                this.getAccountUsage(accountId, today),
+                this.calculateAccountRPM(accountId, 10),
+                this.calculateAccountDailyCost(accountId, today),
+                this.getAccountGroup(accountId)
+            ]);
+            if (!info) {
+                return null;
+            }
+            // 获取24小时的小时级数据
+            const hourlyData = await this.getAccountHourlyData(accountId, today);
+            return {
+                accountId,
+                accountName: info.name,
+                platform: info.platform,
+                isActive: info.isActive,
+                status: info.status,
+                todayTokenUsage: todayUsage.allTokens,
+                todayExpense: todayCost,
+                recentAvgRpm: recentRpm,
+                lastUsedAt: info.lastUsedAt,
+                group,
+                usage: {
+                    today: {
+                        requests: todayUsage.requests,
+                        inputTokens: todayUsage.inputTokens,
+                        outputTokens: todayUsage.outputTokens,
+                        totalTokens: todayUsage.allTokens,
+                        cost: todayCost
+                    },
+                    hourly: hourlyData,
+                    models: {} // 可以后续扩展模型级别的统计
+                }
+            };
+        }
+        catch (error) {
+            logger_1.logger.error(`Error getting account statistics for ${accountId}:`, error);
+            throw error;
+        }
+    }
+    /**
+     * 获取账户的小时级数据
+     */
+    async getAccountHourlyData(accountId, dateStr) {
+        try {
+            const hourlyData = [];
+            for (let hour = 0; hour < 24; hour++) {
+                const hourStr = hour.toString().padStart(2, '0');
+                const hourlyKey = `account_usage:hourly:${accountId}:${dateStr}:${hourStr}`;
+                const data = await redis_1.redisClient.hgetall(hourlyKey);
+                hourlyData.push({
+                    hour: `${hourStr}:00`,
+                    requests: parseInt(data.requests || '0'),
+                    tokens: parseInt(data.allTokens || data.tokens || '0'),
+                    cost: 0 // 小时级费用数据需要从关联的API Keys计算
+                });
+            }
+            return hourlyData;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error getting account hourly data for ${accountId}:`, error);
+            return [];
+        }
+    }
+    /**
+     * 获取所有账户列表
+     */
+    async getAllAccounts() {
+        try {
+            const patterns = [
+                'claude_console_account:*',
+                'claude_account:*',
+                'claude:account:*',
+                'gemini_account:*',
+                'openai:account:*',
+                'bedrock_account:*',
+                'azure_openai:account:*'
+            ];
+            const allAccountKeys = [];
+            for (const pattern of patterns) {
+                const keys = await redis_1.redisClient.scanKeys(pattern);
+                allAccountKeys.push(...keys);
+            }
+            // 提取账户ID
+            return allAccountKeys.map(key => {
+                const parts = key.split(':');
+                return parts[parts.length - 1];
+            });
+        }
+        catch (error) {
+            logger_1.logger.error('Error getting all accounts:', error);
+            throw error;
+        }
+    }
+    /**
+     * 获取多个账户的统计信息
+     */
+    async getMultipleAccountStatistics(accountIds) {
+        try {
+            const results = await Promise.allSettled(accountIds.map(accountId => this.getAccountStatistics(accountId)));
+            return results
+                .filter((result) => result.status === 'fulfilled' && result.value !== null)
+                .map(result => result.value);
+        }
+        catch (error) {
+            logger_1.logger.error('Error getting multiple account statistics:', error);
+            throw error;
+        }
+    }
+    /**
+     * 获取所有分组信息
+     */
+    async getAllGroups() {
+        try {
+            const groupIds = await redis_1.redisClient.smembers('account_groups');
+            const groups = [];
+            for (const groupId of groupIds) {
+                const groupData = await redis_1.redisClient.hgetall(`account_group:${groupId}`);
+                const members = await redis_1.redisClient.smembers(`account_group_members:${groupId}`);
+                if (Object.keys(groupData).length > 0) {
+                    groups.push({
+                        id: groupId,
+                        name: groupData.name || '',
+                        platform: groupData.platform || '',
+                        description: groupData.description || '',
+                        memberCount: members.length,
+                        members,
+                        createdAt: groupData.createdAt || '',
+                        updatedAt: groupData.updatedAt || ''
+                    });
+                }
+            }
+            return groups;
+        }
+        catch (error) {
+            logger_1.logger.error('Error getting all groups:', error);
+            throw error;
+        }
+    }
+}
+exports.AccountService = AccountService;
+//# sourceMappingURL=AccountService.js.map

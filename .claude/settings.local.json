@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx:*)",
+      "Read(//Users/slicenfer/.config/**)",
+      "Read(//Users/slicenfer/Library/**)",
+      "Bash(redis-cli:*)",
+      "Bash(env)",
+      "Read(//Users/slicenfer/**)",
+      "Bash(telnet:*)",
+      "Bash(chmod:*)",
+      "Bash(npm install)",
+      "Bash(npm:*)",
+      "Bash(sed:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
