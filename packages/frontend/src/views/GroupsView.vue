@@ -156,6 +156,10 @@ onMounted(() => {
 <style scoped>
 .groups-view {
   padding: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {

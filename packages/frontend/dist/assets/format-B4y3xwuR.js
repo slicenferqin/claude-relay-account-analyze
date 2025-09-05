@@ -1,0 +1,2 @@
+const n=e=>{if(!e)return"从未使用";const r=new Date(e);if(isNaN(r.getTime()))return"从未使用";const t=new Date().getTime()-r.getTime();return t<6e4?"刚刚":t<36e5?`${Math.floor(t/6e4)}分钟前`:t<864e5?`${Math.floor(t/36e5)}小时前`:r.toLocaleDateString("zh-CN")},i=e=>e>=1e6?`${(e/1e6).toFixed(1)}M`:e>=1e3?`${(e/1e3).toFixed(1)}K`:e.toString(),f=e=>`$${e.toFixed(2)}`;export{i as a,n as b,f};
+//# sourceMappingURL=format-B4y3xwuR.js.map

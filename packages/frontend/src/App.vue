@@ -24,23 +24,34 @@ onUnmounted(() => {
 </script>
 
 <style>
-#app {
-  font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  height: 100vh;
-  width: 100vw;
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-body {
-  height: 100vh;
+html, body {
+  height: 100%;
   overflow: hidden;
+}
+
+#app {
+  font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Element Plus 全局样式覆盖 */
+.el-container {
+  height: 100%;
+}
+
+/* 修夏 el-main 的默认 padding */
+.el-main {
+  padding: 0;
 }
 
 .fade-enter-active,

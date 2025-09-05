@@ -116,10 +116,11 @@
         :data="filteredApiKeys" 
         v-loading="dashboardStore.loading"
         stripe
-        height="600"
+        style="width: 100%"
+        :flexible="true"
         @row-click="showApiKeyDetail"
       >
-        <el-table-column prop="name" label="API Key名称" width="200">
+        <el-table-column prop="name" label="API Key名称" min-width="200">
           <template #default="{ row }">
             <div class="api-key-name">
               <el-text strong>{{ row.name }}</el-text>
@@ -140,15 +141,19 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="lastUsedAt" label="最后使用时间" width="150">
+        <el-table-column prop="lastUsedAt" label="最后使用时间" min-width="150" sortable>
           <template #default="{ row }">
-            <el-tooltip :content="new Date(row.lastUsedAt).toLocaleString()">
+            <el-tooltip 
+              v-if="row.lastUsedAt" 
+              :content="new Date(row.lastUsedAt).toLocaleString()"
+            >
               <span>{{ formatTime(row.lastUsedAt) }}</span>
             </el-tooltip>
+            <span v-else class="never-used">从未使用</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="rpm" label="RPM" width="120" sortable>
+        <el-table-column prop="rpm" label="RPM" width="100" sortable>
           <template #default="{ row }">
             <div class="rpm-display">
               <el-progress 
@@ -162,7 +167,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="currentGroup" label="所属分组" width="120">
+        <el-table-column prop="currentGroup" label="所属分组" min-width="120">
           <template #default="{ row }">
             <el-tag v-if="row.currentGroup" type="primary" size="small">
               {{ row.currentGroup.name }}
@@ -171,7 +176,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="usage.today.cost" label="今日消费" width="100" sortable>
+        <el-table-column prop="usage.today.cost" label="今日消费" width="110" sortable>
           <template #default="{ row }">
             <span :class="getCostClass(row.usage?.today?.cost || 0)">
               {{ formatCurrency(row.usage?.today?.cost || 0) }}
@@ -179,19 +184,19 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="usage.today.requests" label="今日请求" width="100" sortable>
+        <el-table-column prop="usage.today.requests" label="今日请求" width="110" sortable>
           <template #default="{ row }">
             {{ formatNumber(row.usage?.today?.requests || 0) }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="usage.today.totalTokens" label="今日Token" width="120" sortable>
+        <el-table-column prop="usage.today.totalTokens" label="今日Token" min-width="130" sortable>
           <template #default="{ row }">
             {{ formatNumber(row.usage?.today?.totalTokens || 0) }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="isActive" label="状态" width="80">
+        <el-table-column prop="isActive" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.isActive ? 'success' : 'danger'" size="small">
               {{ row.isActive ? '活跃' : '非活跃' }}
@@ -199,7 +204,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" min-width="140" fixed="right">
           <template #default="{ row }">
             <el-space>
               <el-button size="small" @click.stop="showApiKeyDetail(row)">
@@ -321,6 +326,19 @@ const filteredApiKeys = computed(() => {
     );
   }
 
+  // 默认按最后使用时间倒序排序
+  result = [...result].sort((a, b) => {
+    // 处理空值情况
+    if (!a.lastUsedAt && !b.lastUsedAt) return 0;
+    if (!a.lastUsedAt) return 1; // 未使用的排在后面
+    if (!b.lastUsedAt) return -1;
+    
+    // 转换为时间戳比较
+    const timeA = new Date(a.lastUsedAt).getTime();
+    const timeB = new Date(b.lastUsedAt).getTime();
+    return timeB - timeA; // 倒序
+  });
+
   return result;
 });
 
@@ -378,9 +396,10 @@ const getCostClass = (cost: number): string => {
 };
 
 // 生命周期
-onMounted(() => {
-  // 刷新数据
-  refreshData();
+onMounted(async () => {
+  // 先获取分组数据，再获取API Keys
+  await dashboardStore.fetchGroups();
+  await refreshData();
 });
 
 onUnmounted(() => {
@@ -396,6 +415,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0; /* 确保内容可以正常收缩 */
 }
 
 .header-actions {
@@ -477,5 +498,58 @@ onUnmounted(() => {
 
 .api-key-details {
   padding: 16px 0;
+}
+
+.never-used {
+  color: #909399;
+  font-style: italic;
+}
+
+/* 表格卡片自适应高度 */
+.api-keys-view > .el-card:last-child {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.api-keys-view > .el-card:last-child :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.api-keys-view > .el-card:last-child :deep(.el-table) {
+  flex: 1;
+  width: 100% !important;
+}
+
+/* 确保表格横向充满容器 */
+:deep(.el-table__header-wrapper),
+:deep(.el-table__body-wrapper),
+:deep(.el-table__footer-wrapper) {
+  width: 100%;
+}
+
+/* 表格滚动条样式优化 */
+:deep(.el-table__body-wrapper) {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+/* 适配不同屏幕尺寸 */
+@media (max-width: 1920px) {
+  :deep(.el-table) {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1921px) {
+  :deep(.el-table) {
+    font-size: 15px;
+  }
 }
 </style>

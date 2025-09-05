@@ -140,13 +140,32 @@ export class AccountService {
    */
   async calculateAccountDailyCost(accountId: string, date: string): Promise<number> {
     try {
-      // 查找关联到此账户的所有API Keys
+      // 方案1：直接从账户的usage中获取cost
+      const dailyKey = `account_usage:daily:${accountId}:${date}`;
+      const costFromUsage = await redisClient.hget(dailyKey, 'cost');
+      if (costFromUsage) {
+        return parseFloat(costFromUsage);
+      }
+      
+      // 方案2：从关联的API Keys累加费用
       const apiKeys = await this.getAccountApiKeys(accountId);
       
       const costPromises = apiKeys.map(async (keyId) => {
-        const costKey = `usage:cost:daily:${keyId}:${date}`;
-        const cost = await redisClient.get(costKey);
-        return parseFloat(cost || '0');
+        // 尝试多个可能的key格式
+        const costKeys = [
+          `usage:cost:daily:${keyId}:${date}`,
+          `usage:daily:${keyId}:${date}`,
+          `apikey_usage:daily:${keyId}:${date}`
+        ];
+        
+        for (const costKey of costKeys) {
+          const costData = await redisClient.hget(costKey, 'cost');
+          if (costData) {
+            return parseFloat(costData);
+          }
+        }
+        
+        return 0;
       });
       
       const costs = await Promise.all(costPromises);
@@ -167,10 +186,33 @@ export class AccountService {
       
       for (const keyPath of allApiKeys) {
         const keyId = keyPath.replace('apikey:', '');
-        const keyData = await redisClient.hget(keyPath, 'claudeAccountId');
         
-        if (keyData === accountId || keyData === `group:${accountId}`) {
+        // 获取API Key的所有数据
+        const keyData = await redisClient.hgetall(keyPath);
+        
+        // 多种匹配方式
+        // 1. claudeAccountId直接匹配
+        if (keyData.claudeAccountId === accountId) {
           relatedKeys.push(keyId);
+          continue;
+        }
+        
+        // 2. 通过组匹配
+        if (keyData.claudeAccountId === `group:${accountId}`) {
+          relatedKeys.push(keyId);
+          continue;
+        }
+        
+        // 3. 通过accountId字段匹配
+        if (keyData.accountId === accountId) {
+          relatedKeys.push(keyId);
+          continue;
+        }
+        
+        // 4. 名称包含账户ID
+        if (keyData.name && keyData.name.includes(accountId)) {
+          relatedKeys.push(keyId);
+          continue;
         }
       }
       

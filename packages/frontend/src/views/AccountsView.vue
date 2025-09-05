@@ -108,10 +108,11 @@
         :data="filteredAccounts" 
         v-loading="dashboardStore.loading"
         stripe
-        height="500"
+        style="width: 100%"
+        :flexible="true"
         @row-click="showAccountDetail"
       >
-        <el-table-column prop="accountName" label="账号名称" width="150">
+        <el-table-column prop="accountName" label="账号名称" min-width="150">
           <template #default="{ row }">
             <div class="account-name-cell">
               <el-text strong>{{ row.accountName }}</el-text>
@@ -122,19 +123,19 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="todayTokenUsage" label="今日Token使用量" width="130" sortable>
+        <el-table-column prop="todayTokenUsage" label="今日Token使用量" min-width="140" sortable>
           <template #default="{ row }">
             <span class="token-usage">{{ formatNumber(row.todayTokenUsage) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="todayExpense" label="今日费用消耗" width="120" sortable>
+        <el-table-column prop="todayExpense" label="今日费用消耗" min-width="130" sortable>
           <template #default="{ row }">
             <span class="expense">{{ formatCurrency(row.todayExpense) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="recentAvgRpm" label="近10分钟RPM" width="120" sortable>
+        <el-table-column prop="recentAvgRpm" label="近10分钟RPM" min-width="120" sortable>
           <template #default="{ row }">
             <div class="rpm-cell">
               <el-progress 
@@ -148,7 +149,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="group" label="账号所属分组" width="120">
+        <el-table-column prop="group" label="账号所属分组" min-width="130">
           <template #default="{ row }">
             <el-tag v-if="row.group" type="primary" size="small">
               {{ row.group.name }}
@@ -157,14 +158,14 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="group.totalMembers" label="分组用户数" width="100">
+        <el-table-column prop="group.totalMembers" label="分组用户数" width="110">
           <template #default="{ row }">
             <span v-if="row.group">{{ row.group.totalMembers }}</span>
             <span v-else>-</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="group.activeMembers" label="分组活跃用户" width="120">
+        <el-table-column prop="group.activeMembers" label="分组活跃用户" min-width="130">
           <template #default="{ row }">
             <span v-if="row.group" class="active-users">
               {{ row.group.activeMembers }}/{{ row.group.totalMembers }}
@@ -173,7 +174,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row.status)" size="small">
               {{ getStatusText(row.status) }}
@@ -181,7 +182,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="lastUsedAt" label="最后使用时间" width="140">
+        <el-table-column prop="lastUsedAt" label="最后使用时间" min-width="150">
           <template #default="{ row }">
             <el-tooltip :content="new Date(row.lastUsedAt).toLocaleString()">
               <span>{{ formatTime(row.lastUsedAt) }}</span>
@@ -189,7 +190,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" min-width="120" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click.stop="showAccountDetail(row)">
               详情
@@ -410,6 +411,43 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 表格卡片自适应 */
+.accounts-view > .el-card:last-child {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.accounts-view > .el-card:last-child :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.accounts-view > .el-card:last-child :deep(.el-table) {
+  flex: 1;
+  width: 100% !important;
+}
+
+/* 确保表格横向充满容器 */
+:deep(.el-table__header-wrapper),
+:deep(.el-table__body-wrapper),
+:deep(.el-table__footer-wrapper) {
+  width: 100%;
+}
+
+/* 表格滚动条样式优化 */
+:deep(.el-table__body-wrapper) {
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .accounts-grid {

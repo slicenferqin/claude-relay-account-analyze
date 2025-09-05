@@ -106,13 +106,11 @@
 
         <!-- 主内容区域 -->
         <el-main class="main-content">
-          <el-scrollbar>
-            <router-view v-slot="{ Component, route }">
-              <transition name="fade" mode="out-in">
-                <component :is="Component" :key="route.path" />
-              </transition>
-            </router-view>
-          </el-scrollbar>
+          <router-view v-slot="{ Component, route }">
+            <transition name="fade" mode="out-in">
+              <component :is="Component" :key="route.path" />
+            </transition>
+          </router-view>
         </el-main>
       </el-container>
     </el-container>
@@ -296,12 +294,18 @@ onUnmounted(() => {
 .dashboard-layout {
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
+}
+
+.el-container {
+  height: 100%;
 }
 
 .sidebar {
   background-color: #001529;
   color: white;
-  overflow: hidden;
+  overflow-y: auto;
+  height: 100vh;
 }
 
 .logo {
@@ -389,8 +393,14 @@ onUnmounted(() => {
 
 .main-content {
   background: #f5f5f5;
-  padding: 24px;
-  overflow: hidden;
+  padding: 16px;
+  height: calc(100vh - 60px); /* 减去 header 的高度 */
+  overflow-y: auto;
+}
+
+/* 移除 el-scrollbar，直接使用 main-content 的滚动 */
+.main-content > .router-view-wrapper {
+  height: 100%;
 }
 
 .settings-content {

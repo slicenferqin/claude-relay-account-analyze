@@ -8,7 +8,15 @@ export const formatDateTime = (date: Date): string => {
 };
 
 export const formatTime = (dateString: string): string => {
+  if (!dateString) {
+    return '从未使用';
+  }
+  
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return '从未使用';
+  }
+  
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   
