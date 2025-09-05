@@ -25,7 +25,7 @@ export const useSocketStore = defineStore('socket', () => {
     }
 
     const socketUrl = import.meta.env.DEV 
-      ? 'http://localhost:3000'
+      ? 'http://localhost:3002'
       : window.location.origin;
 
     socket.value = io(socketUrl, {

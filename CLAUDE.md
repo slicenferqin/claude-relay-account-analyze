@@ -92,7 +92,7 @@ account-dashboard/
 2. **Install dependencies**: `npm install` (installs all workspace packages)
 3. **Configure backend**: Copy `packages/backend/.env.example` to `.env` and configure Redis connection
 4. **Start development**: `npm run dev` (starts both frontend and backend)
-5. **Access**: Frontend at http://localhost:5173, Backend at http://localhost:3000
+5. **Access**: Frontend at http://localhost:5173, Backend at http://localhost:3002
 
 ## Key Features
 

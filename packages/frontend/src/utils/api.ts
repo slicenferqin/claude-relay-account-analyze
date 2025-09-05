@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus';
 
 // API客户端配置
 const config = {
-  baseURL: import.meta.env.DEV ? 'http://localhost:3000' : '',
+  baseURL: import.meta.env.DEV ? 'http://localhost:3002' : '',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
