@@ -34,14 +34,11 @@ export default defineConfig({
     outDir: '../backend/public',
     emptyOutDir: true,
     sourcemap: false,
+    minify: 'esbuild',
+    target: 'es2020',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'element-plus': ['element-plus'],
-          'echarts': ['echarts', 'vue-echarts'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'utils': ['axios', 'dayjs', 'lodash-es']
-        }
+        manualChunks: undefined
       }
     }
   },
