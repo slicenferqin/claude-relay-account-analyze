@@ -13,7 +13,7 @@ pm2 stop dashboard-simple 2>/dev/null || true
 pm2 delete dashboard-simple 2>/dev/null || true
 
 # 2. 进入项目目录
-cd /root/claude-relay-account-analyze || exit 1
+cd /home/ecs-user/sanjiu/claude-relay-account-analyze || exit 1
 
 # 3. 拉取最新代码
 echo "2. 拉取最新代码..."
