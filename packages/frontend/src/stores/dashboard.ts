@@ -85,12 +85,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
       if (response.data.success) {
         apiKeys.value = response.data.data;
         lastRefresh.value = new Date();
+        // 返回完整响应数据，包括分页信息
+        return response.data;
       } else {
         throw new Error(response.data.error || 'Failed to fetch API keys');
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error fetching API keys:', err);
+      throw err;
     } finally {
       loading.value = false;
     }

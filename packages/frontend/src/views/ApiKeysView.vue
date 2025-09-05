@@ -217,6 +217,22 @@
           </template>
         </el-table-column>
       </el-table>
+      
+      <!-- 分页组件 -->
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :small="false"
+          :disabled="false"
+          :background="true"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pagination.total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <!-- API Key详情对话框 -->
@@ -301,6 +317,16 @@ const filters = ref({
 const showDetailDialog = ref(false);
 const selectedApiKey = ref<ApiKeyStatistics | null>(null);
 
+// 分页相关
+const currentPage = ref(1);
+const pageSize = ref(20);
+const pagination = ref({
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 1
+});
+
 // 计算属性
 const filteredApiKeys = computed(() => {
   let result = dashboardStore.apiKeys;
@@ -343,12 +369,19 @@ const filteredApiKeys = computed(() => {
 });
 
 // 方法
-const applyFilters = () => {
-  dashboardStore.updateApiKeyFilters({
+const applyFilters = async () => {
+  const params = {
     groupId: filters.value.groupId || undefined,
     isActive: filters.value.isActive,
-    search: filters.value.search || undefined
-  });
+    search: filters.value.search || undefined,
+    page: currentPage.value,
+    limit: pageSize.value
+  };
+  
+  const result = await dashboardStore.fetchApiKeys(params);
+  if (result && result.pagination) {
+    pagination.value = result.pagination;
+  }
 };
 
 const onSearchInput = debounce(() => {
@@ -356,7 +389,7 @@ const onSearchInput = debounce(() => {
 }, 500);
 
 const refreshData = async () => {
-  await dashboardStore.fetchApiKeys();
+  await applyFilters();
 };
 
 const exportData = () => {
@@ -393,6 +426,18 @@ const getCostClass = (cost: number): string => {
   if (cost > 50) return 'high-cost';
   if (cost > 20) return 'medium-cost';
   return 'low-cost';
+};
+
+// 分页事件处理
+const handleSizeChange = (val: number) => {
+  pageSize.value = val;
+  currentPage.value = 1; // 重置到第一页
+  applyFilters();
+};
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val;
+  applyFilters();
 };
 
 // 生命周期
@@ -551,5 +596,12 @@ onUnmounted(() => {
   :deep(.el-table) {
     font-size: 15px;
   }
+}
+
+/* 分页样式 */
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>
