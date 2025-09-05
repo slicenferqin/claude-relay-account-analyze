@@ -15,9 +15,18 @@ pm2 delete dashboard-simple 2>/dev/null || true
 # 2. 进入项目目录
 cd /home/ecs-user/sanjiu/claude-relay-account-analyze || exit 1
 
-# 3. 拉取最新代码
+# 3. 拉取最新代码（支持多种方式）
 echo "2. 拉取最新代码..."
-git pull origin main
+if git pull origin main; then
+    echo "Git pull 成功"
+elif git pull https://gitclone.com/github.com/slicenferqin/claude-relay-account-analyze.git main; then
+    echo "使用镜像源拉取成功"
+elif git pull https://hub.fastgit.org/slicenferqin/claude-relay-account-analyze.git main; then
+    echo "使用备用镜像源拉取成功"
+else
+    echo "所有Git拉取方式都失败，请手动上传代码"
+    exit 1
+fi
 
 # 4. 清理所有 node_modules 和缓存
 echo "3. 清理旧的依赖和缓存..."

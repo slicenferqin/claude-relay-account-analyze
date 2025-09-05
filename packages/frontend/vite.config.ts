@@ -7,7 +7,16 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 
 export default defineConfig({
   plugins: [
-    vue()
+    vue(),
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+      imports: ['vue', 'vue-router', 'pinia'],
+      dts: true
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+      dts: true
+    })
   ],
   resolve: {
     alias: {
