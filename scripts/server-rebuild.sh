@@ -32,6 +32,7 @@ rm -f packages/*/package-lock.json
 rm -rf packages/backend/dist
 rm -rf packages/backend/public
 rm -rf packages/shared/dist
+rm -rf packages/frontend/dist
 
 # 5. 安装依赖
 echo "4. 安装新的依赖..."
