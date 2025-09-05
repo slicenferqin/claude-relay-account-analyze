@@ -32,18 +32,19 @@ export class App {
    * 设置中间件
    */
   private setupMiddleware(): void {
-    // 安全中间件
+    // 安全中间件 - 禁用HSTS以避免HTTPS重定向
     this.app.use(helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           scriptSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "https:"],
+          imgSrc: ["'self'", "data:", "http:", "https:"],
           connectSrc: ["'self'", "ws:", "wss:"],
         },
       },
-      crossOriginEmbedderPolicy: false
+      crossOriginEmbedderPolicy: false,
+      hsts: false // 禁用HSTS避免强制HTTPS
     }));
 
     // CORS配置 - 简化配置，支持同端口服务
