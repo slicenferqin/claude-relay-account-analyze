@@ -89,7 +89,7 @@ export class App {
     this.app.use(apiRoutes);
 
     // 静态文件服务 - 服务前端构建的文件
-    const staticPath = path.join(__dirname, '../../frontend/dist');
+    const staticPath = path.join(__dirname, '../public');
     this.app.use(express.static(staticPath));
 
     // SPA路由处理 - 所有非API请求都返回index.html

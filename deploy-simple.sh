@@ -23,7 +23,7 @@ log_error() {
 }
 
 # 配置变量
-PORT=${PORT:-8080}
+PORT=${PORT:-3002}
 NODE_ENV=${NODE_ENV:-production}
 
 log_info "========================================="

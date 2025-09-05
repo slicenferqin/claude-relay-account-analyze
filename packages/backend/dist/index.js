@@ -78,7 +78,7 @@ class App {
         // API路由 - 现在所有API都在/api路径下
         this.app.use(api_1.default);
         // 静态文件服务 - 服务前端构建的文件
-        const staticPath = path_1.default.join(__dirname, '../../frontend/dist');
+        const staticPath = path_1.default.join(__dirname, '../public');
         this.app.use(express_1.default.static(staticPath));
         // SPA路由处理 - 所有非API请求都返回index.html
         this.app.get('*', (req, res) => {
