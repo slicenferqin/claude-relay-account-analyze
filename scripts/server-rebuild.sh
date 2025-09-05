@@ -9,11 +9,11 @@ echo "========================================="
 
 # 1. 停止当前运行的服务
 echo "1. 停止当前服务..."
-pm2 stop account-dashboard-backend 2>/dev/null || true
-pm2 delete account-dashboard-backend 2>/dev/null || true
+pm2 stop dashboard-simple 2>/dev/null || true
+pm2 delete dashboard-simple 2>/dev/null || true
 
 # 2. 进入项目目录
-cd /root/account-dashboard || exit 1
+cd /root/claude-relay-account-analyze || exit 1
 
 # 3. 拉取最新代码
 echo "2. 拉取最新代码..."
@@ -44,7 +44,8 @@ npm run build
 # 7. 启动服务
 echo "6. 启动服务..."
 cd packages/backend
-pm2 start dist/index.js --name account-dashboard-backend
+pm2 start dist/index.js --name dashboard-simple
+
 
 # 8. 保存 PM2 配置
 pm2 save
@@ -58,4 +59,4 @@ echo "检查服务状态："
 pm2 status
 echo ""
 echo "查看日志："
-echo "pm2 logs account-dashboard-backend"
+echo "pm2 logs dashboard-simple"
