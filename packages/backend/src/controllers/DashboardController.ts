@@ -385,7 +385,13 @@ export class DashboardController {
       const info = await this.redisDataService.getApiKeyInfo(keyId);
       if (!info) continue;
       
-      if (query.isActive !== undefined && info.isActive !== query.isActive) continue;
+      // 修复isActive过滤逻辑 - 将字符串转换为布尔值比较
+      if (query.isActive !== undefined) {
+        const queryIsActive = String(query.isActive);
+        const isActiveFilter = queryIsActive === 'true';
+        if (info.isActive !== isActiveFilter) continue;
+      }
+      
       if (query.groupId && !info.claudeAccountId?.includes(query.groupId)) continue;
       
       filtered.push(keyId);
