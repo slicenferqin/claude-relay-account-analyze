@@ -21,6 +21,18 @@ export declare class AccountService {
      */
     calculateAccountDailyCost(accountId: string, date: string): Promise<number>;
     /**
+     * 计算账号下所有用户的费用总和
+     */
+    calculateAccountUsersCost(accountId: string, date: string): Promise<number>;
+    /**
+     * 获取账号下的所有用户ID
+     */
+    getAccountUsers(accountId: string): Promise<string[]>;
+    /**
+     * 计算单个用户的日费用
+     */
+    calculateUserDailyCost(userId: string, date: string): Promise<number>;
+    /**
      * 获取账户关联的API Keys
      */
     getAccountApiKeys(accountId: string): Promise<string[]>;

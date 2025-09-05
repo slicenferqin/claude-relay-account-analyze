@@ -137,7 +137,12 @@ class AccountService {
             if (costFromUsage) {
                 return parseFloat(costFromUsage);
             }
-            // 方案2：从关联的API Keys累加费用
+            // 方案2：通过账号下的用户聚合费用
+            const userCosts = await this.calculateAccountUsersCost(accountId, date);
+            if (userCosts > 0) {
+                return userCosts;
+            }
+            // 方案3：从关联的API Keys累加费用（备选方案）
             const apiKeys = await this.getAccountApiKeys(accountId);
             const costPromises = apiKeys.map(async (keyId) => {
                 // 尝试多个可能的key格式
@@ -159,6 +164,90 @@ class AccountService {
         }
         catch (error) {
             logger_1.logger.error(`Error calculating account daily cost for ${accountId}:`, error);
+            return 0;
+        }
+    }
+    /**
+     * 计算账号下所有用户的费用总和
+     */
+    async calculateAccountUsersCost(accountId, date) {
+        try {
+            // 获取账号下所有用户ID
+            const userIds = await this.getAccountUsers(accountId);
+            if (userIds.length === 0) {
+                return 0;
+            }
+            // 计算每个用户的今日费用并求和
+            const userCostPromises = userIds.map(async (userId) => {
+                return await this.calculateUserDailyCost(userId, date);
+            });
+            const userCosts = await Promise.all(userCostPromises);
+            const totalCost = userCosts.reduce((sum, cost) => sum + cost, 0);
+            logger_1.logger.info(`Account ${accountId} users cost calculation: ${userIds.length} users, total cost: ${totalCost}`);
+            return totalCost;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error calculating account users cost for ${accountId}:`, error);
+            return 0;
+        }
+    }
+    /**
+     * 获取账号下的所有用户ID
+     */
+    async getAccountUsers(accountId) {
+        try {
+            const userIds = new Set();
+            // 方法1：从API Keys中获取关联用户
+            const allApiKeys = await redis_1.redisClient.scanKeys('apikey:*');
+            for (const keyPath of allApiKeys) {
+                const keyData = await redis_1.redisClient.hgetall(keyPath);
+                // 检查API Key是否属于该账号
+                const isRelated = keyData.claudeAccountId === accountId ||
+                    keyData.accountId === accountId ||
+                    keyData.claudeAccountId === `group:${accountId}`;
+                if (isRelated && keyData.userId) {
+                    userIds.add(keyData.userId);
+                }
+            }
+            // 方法2：直接查找账号关联的用户（如果有这样的数据结构）
+            const accountUsersKey = `account_users:${accountId}`;
+            const accountUsers = await redis_1.redisClient.smembers(accountUsersKey);
+            accountUsers.forEach(userId => userIds.add(userId));
+            const result = Array.from(userIds).filter(id => id && id.length > 0);
+            logger_1.logger.info(`Found ${result.length} users for account ${accountId}: ${result.slice(0, 5).join(', ')}${result.length > 5 ? '...' : ''}`);
+            return result;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error getting account users for ${accountId}:`, error);
+            return [];
+        }
+    }
+    /**
+     * 计算单个用户的日费用
+     */
+    async calculateUserDailyCost(userId, date) {
+        try {
+            // 尝试多种可能的用户费用key格式
+            const userCostKeys = [
+                `usage:cost:daily:${userId}:${date}`,
+                `user_usage:daily:${userId}:${date}`,
+                `usage:daily:user:${userId}:${date}`,
+                `daily_usage:${userId}:${date}`
+            ];
+            for (const costKey of userCostKeys) {
+                const costData = await redis_1.redisClient.hget(costKey, 'cost');
+                if (costData) {
+                    const cost = parseFloat(costData);
+                    if (cost > 0) {
+                        logger_1.logger.debug(`Found cost ${cost} for user ${userId} in key ${costKey}`);
+                        return cost;
+                    }
+                }
+            }
+            return 0;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error calculating user daily cost for ${userId}:`, error);
             return 0;
         }
     }
