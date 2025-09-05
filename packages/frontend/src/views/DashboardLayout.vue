@@ -67,9 +67,9 @@
 
             <!-- 最后刷新时间 -->
             <div class="last-refresh" v-if="lastRefresh">
-              <el-text size="small" type="info">
+              <span class="el-text" size="small" type="info">
                 最后刷新: {{ formatTime(lastRefresh) }}
-              </el-text>
+              </span>
             </div>
 
             <!-- 自动刷新控制 -->

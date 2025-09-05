@@ -10,11 +10,11 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "vue": "3.2.47",
-    "vue-router": "^4.2.5",
-    "pinia": "2.0.36",
-    "element-plus": "^2.4.4",
-    "@element-plus/icons-vue": "^2.3.1",
+    "vue": "3.2.37",
+    "vue-router": "4.1.6",
+    "pinia": "2.0.23",
+    "element-plus": "2.2.17",
+    "@element-plus/icons-vue": "2.0.9",
     "echarts": "^5.4.3",
     "vue-echarts": "^6.6.1",
     "axios": "^1.6.2",

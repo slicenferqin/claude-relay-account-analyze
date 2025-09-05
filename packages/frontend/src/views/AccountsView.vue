@@ -58,9 +58,9 @@
 
             <!-- 最后使用时间 -->
             <div class="last-used">
-              <el-text type="info" size="small">
+              <span class="el-text" type="info" size="small">
                 最后使用: {{ formatTime(account.lastUsedAt) }}
-              </el-text>
+              </span>
             </div>
           </el-card>
         </el-col>
@@ -115,7 +115,7 @@
         <el-table-column prop="accountName" label="账号名称" min-width="150">
           <template #default="{ row }">
             <div class="account-name-cell">
-              <el-text strong>{{ row.accountName }}</el-text>
+              <span class="el-text" strong>{{ row.accountName }}</span>
               <el-tag :type="getPlatformTagType(row.platform)" size="small">
                 {{ getPlatformName(row.platform) }}
               </el-tag>
@@ -258,19 +258,28 @@
           <el-tab-pane label="使用统计" name="usage">
             <el-row :gutter="16">
               <el-col :span="8">
-                <el-statistic title="今日Token使用量" :value="selectedAccount.todayTokenUsage" />
+                <div class="stat-item">
+                  <div class="stat-title">今日Token使用量</div>
+                  <div class="stat-value">{{ selectedAccount.todayTokenUsage || 0 }}</div>
+                </div>
               </el-col>
               <el-col :span="8">
-                <el-statistic title="今日费用消耗" :value="selectedAccount.todayExpense" precision="2" prefix="$" />
+                <div class="stat-item">
+                  <div class="stat-title">今日费用消耗</div>
+                  <div class="stat-value">${{ (selectedAccount.todayExpense || 0).toFixed(2) }}</div>
+                </div>
               </el-col>
               <el-col :span="8">
-                <el-statistic title="近10分钟平均RPM" :value="selectedAccount.recentAvgRpm" />
+                <div class="stat-item">
+                  <div class="stat-title">近10分钟平均RPM</div>
+                  <div class="stat-value">{{ selectedAccount.recentAvgRpm || 0 }}</div>
+                </div>
               </el-col>
             </el-row>
 
             <!-- 这里可以添加图表展示 -->
             <div class="usage-charts" style="margin-top: 20px;">
-              <el-text type="info">使用趋势图表功能开发中...</el-text>
+              <span class="el-text" type="info">使用趋势图表功能开发中...</span>
             </div>
           </el-tab-pane>
         </el-tabs>
@@ -600,5 +609,25 @@ onMounted(() => {
   background: #f9fafb;
   border-radius: 8px;
   text-align: center;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-title {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1e293b;
 }
 </style>

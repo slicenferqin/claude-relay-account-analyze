@@ -106,9 +106,9 @@
       <template #header>
         <div class="card-header">
           <span>API Key 列表</span>
-          <el-text type="info" size="small">
+          <span class="el-text" type="info" size="small">
             共 {{ filteredApiKeys.length }} 个API Key
-          </el-text>
+          </span>
         </div>
       </template>
 
@@ -123,7 +123,7 @@
         <el-table-column prop="name" label="API Key名称" min-width="200">
           <template #default="{ row }">
             <div class="api-key-name">
-              <el-text strong>{{ row.name }}</el-text>
+              <span class="el-text" strong>{{ row.name }}</span>
               <div class="tags" v-if="row.tags?.length">
                 <el-tag 
                   v-for="tag in row.tags.slice(0, 2)" 
@@ -133,9 +133,9 @@
                 >
                   {{ tag }}
                 </el-tag>
-                <el-text v-if="row.tags.length > 2" size="small" type="info">
+                <span class="el-text" v-if="row.tags.length > 2" size="small" type="info">
                   +{{ row.tags.length - 2 }}
-                </el-text>
+                </span>
               </div>
             </div>
           </template>
@@ -172,7 +172,7 @@
             <el-tag v-if="row.currentGroup" type="primary" size="small">
               {{ row.currentGroup.name }}
             </el-tag>
-            <el-text v-else type="info" size="small">未分组</el-text>
+            <span class="el-text" v-else type="info" size="small">未分组</span>
           </template>
         </el-table-column>
 

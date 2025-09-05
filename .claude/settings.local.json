@@ -18,7 +18,8 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(git commit:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,38 @@
+/* Element Plus Text 组件样式模拟 */
+.el-text {
+  display: inline;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.el-text[size="small"] {
+  font-size: 12px;
+}
+
+.el-text[size="large"] {
+  font-size: 16px;
+}
+
+.el-text[type="primary"] {
+  color: #409eff;
+}
+
+.el-text[type="success"] {
+  color: #67c23a;
+}
+
+.el-text[type="warning"] {
+  color: #e6a23c;
+}
+
+.el-text[type="danger"] {
+  color: #f56c6c;
+}
+
+.el-text[type="info"] {
+  color: #909399;
+}
+
+.el-text[strong] {
+  font-weight: bold;
+}

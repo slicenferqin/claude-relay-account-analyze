@@ -36,7 +36,7 @@
               </div>
 
               <div class="group-description" v-if="group.description">
-                <el-text type="info" size="small">{{ group.description }}</el-text>
+                <span class="el-text" type="info" size="small">{{ group.description }}</span>
               </div>
             </el-card>
           </el-col>

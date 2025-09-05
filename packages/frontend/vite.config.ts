@@ -14,7 +14,7 @@ export default defineConfig({
       dts: true
     }),
     Components({
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({ importStyle: 'css' })],
       dts: true
     })
   ],
@@ -28,12 +28,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3002',
         changeOrigin: true,
         secure: false
       },
       '/socket.io': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3002',
         changeOrigin: true,
         ws: true
       }
