@@ -198,6 +198,22 @@
           </template>
         </el-table-column>
       </el-table>
+      
+      <!-- 分页组件 -->
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :small="false"
+          :disabled="false"
+          :background="true"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pagination.total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <!-- 账号详情对话框 -->
@@ -308,6 +324,16 @@ const platformFilter = ref('');
 const showDetailDialog = ref(false);
 const selectedAccount = ref<AccountStatistics | null>(null);
 
+// 分页相关
+const currentPage = ref(1);
+const pageSize = ref(20);
+const pagination = ref({
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 1
+});
+
 // 计算属性
 const filteredAccounts = computed(() => {
   let result = dashboardStore.accounts;
@@ -326,7 +352,13 @@ const filteredAccounts = computed(() => {
     );
   }
 
-  return result;
+  // 更新分页总数
+  pagination.value.total = result.length;
+
+  // 应用分页
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return result.slice(start, end);
 });
 
 // 方法
@@ -409,6 +441,16 @@ const getRpmColor = (rpm: number): string => {
   return '#f56c6c';
 };
 
+// 分页事件处理
+const handleSizeChange = (val: number) => {
+  pageSize.value = val;
+  currentPage.value = 1; // 重置到第一页
+};
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val;
+};
+
 // 生命周期
 onMounted(() => {
   refreshData();
@@ -430,6 +472,7 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .accounts-view > .el-card:last-child :deep(.el-card__body) {
@@ -443,6 +486,8 @@ onMounted(() => {
 
 .accounts-view > .el-card:last-child :deep(.el-table) {
   flex: 1;
+  min-height: 400px;
+  max-height: calc(100vh - 500px);
   width: 100% !important;
 }
 
@@ -457,6 +502,16 @@ onMounted(() => {
 :deep(.el-table__body-wrapper) {
   overflow-x: auto;
   overflow-y: auto;
+  max-height: calc(100vh - 580px);
+}
+
+:deep(.el-table__header-wrapper) {
+  overflow-x: auto;
+}
+
+/* 确保表格内容可见 */
+:deep(.el-table) {
+  height: auto !important;
 }
 
 .accounts-grid {
@@ -629,5 +684,12 @@ onMounted(() => {
   font-size: 24px;
   font-weight: bold;
   color: #1e293b;
+}
+
+/* 分页样式 */
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>

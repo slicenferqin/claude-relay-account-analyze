@@ -556,6 +556,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .api-keys-view > .el-card:last-child :deep(.el-card__body) {
@@ -569,6 +570,8 @@ onUnmounted(() => {
 
 .api-keys-view > .el-card:last-child :deep(.el-table) {
   flex: 1;
+  min-height: 400px;
+  max-height: calc(100vh - 400px);
   width: 100% !important;
 }
 
@@ -583,6 +586,16 @@ onUnmounted(() => {
 :deep(.el-table__body-wrapper) {
   overflow-x: auto;
   overflow-y: auto;
+  max-height: calc(100vh - 480px);
+}
+
+:deep(.el-table__header-wrapper) {
+  overflow-x: auto;
+}
+
+/* 确保表格内容可见 */
+:deep(.el-table) {
+  height: auto !important;
 }
 
 /* 适配不同屏幕尺寸 */
