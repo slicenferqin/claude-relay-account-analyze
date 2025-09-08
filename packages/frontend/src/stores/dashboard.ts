@@ -25,8 +25,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   // 分页和过滤状态
   const apiKeyFilters = ref<ApiKeyQueryParams>({
     page: 1,
-    limit: 20,
-    isActive: true
+    limit: 20
   });
   
   const accountFilters = ref<AccountQueryParams>({

@@ -62,8 +62,8 @@
         <el-col :span="6">
           <el-card>
             <div class="stat-card">
-              <div class="stat-value">{{ dashboardStore.activeApiKeys.length }}</div>
-              <div class="stat-label">活跃API Keys</div>
+              <div class="stat-value">{{ dashboardStore.apiKeys.length }}</div>
+              <div class="stat-label">API Keys总数</div>
               <el-icon class="stat-icon"><Key /></el-icon>
             </div>
           </el-card>
@@ -310,7 +310,7 @@ const socketStore = useSocketStore();
 // 响应式数据
 const filters = ref({
   groupId: '',
-  isActive: true,
+  isActive: undefined as boolean | undefined,
   search: ''
 });
 

@@ -10,8 +10,8 @@
                 <el-icon><Key /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-number">{{ dashboardStore.activeApiKeys.length }}</div>
-                <div class="stat-title">活跃API Keys</div>
+                <div class="stat-number">{{ dashboardStore.apiKeys.length }}</div>
+                <div class="stat-title">API Keys总数</div>
                 <div class="stat-trend">
                   <el-icon class="trend-icon up"><ArrowUp /></el-icon>
                   <span class="trend-text">+5.2%</span>
