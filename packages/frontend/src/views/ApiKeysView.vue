@@ -62,7 +62,7 @@
         <el-col :span="6">
           <el-card>
             <div class="stat-card">
-              <div class="stat-value">{{ dashboardStore.apiKeys.length }}</div>
+              <div class="stat-value">{{ dashboardStore.apiKeysStats.total }}</div>
               <div class="stat-label">API Keys总数</div>
               <el-icon class="stat-icon"><Key /></el-icon>
             </div>
@@ -72,7 +72,7 @@
         <el-col :span="6">
           <el-card>
             <div class="stat-card">
-              <div class="stat-value">{{ formatCurrency(dashboardStore.totalDailyCost) }}</div>
+              <div class="stat-value">{{ formatCurrency(dashboardStore.apiKeysStats.totalDailyCost) }}</div>
               <div class="stat-label">今日总消费</div>
               <el-icon class="stat-icon"><Money /></el-icon>
             </div>
@@ -82,7 +82,7 @@
         <el-col :span="6">
           <el-card>
             <div class="stat-card">
-              <div class="stat-value">{{ formatNumber(dashboardStore.totalTodayRequests) }}</div>
+              <div class="stat-value">{{ formatNumber(dashboardStore.apiKeysStats.totalTodayRequests) }}</div>
               <div class="stat-label">今日总请求</div>
               <el-icon class="stat-icon"><Promotion /></el-icon>
             </div>
@@ -92,7 +92,7 @@
         <el-col :span="6">
           <el-card>
             <div class="stat-card">
-              <div class="stat-value">{{ dashboardStore.averageRPM }}</div>
+              <div class="stat-value">{{ dashboardStore.apiKeysStats.averageRPM }}</div>
               <div class="stat-label">平均RPM</div>
               <el-icon class="stat-icon"><Timer /></el-icon>
             </div>
@@ -107,7 +107,7 @@
         <div class="card-header">
           <span>API Key 列表</span>
           <span class="el-text" type="info" size="small">
-            共 {{ filteredApiKeys.length }} 个API Key
+            当前筛选结果：{{ pagination.total }} 个API Key
           </span>
         </div>
       </template>
@@ -310,7 +310,7 @@ const socketStore = useSocketStore();
 // 响应式数据
 const filters = ref({
   groupId: '',
-  isActive: undefined as boolean | undefined,
+  isActive: true,
   search: ''
 });
 

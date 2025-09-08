@@ -14,9 +14,25 @@ import { apiClient } from '../utils/api';
 import { useSocketStore } from './socket';
 
 export const useDashboardStore = defineStore('dashboard', () => {
-  // 状态
+  // 分页显示数据（当前页数据）
   const apiKeys = ref<ApiKeyStatistics[]>([]);
   const accounts = ref<AccountStatistics[]>([]);
+  
+  // 全量统计数据
+  const apiKeysStats = ref({
+    total: 0,
+    active: 0,
+    totalDailyCost: 0,
+    totalTodayRequests: 0,
+    averageRPM: 0
+  });
+  
+  const accountsStats = ref({
+    total: 0,
+    active: 0
+  });
+  
+  // 其他数据
   const groups = ref<AccountGroup[]>([]);
   const systemMetrics = ref<SystemMetrics | null>(null);
   const loading = ref(false);
@@ -25,7 +41,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   // 分页和过滤状态
   const apiKeyFilters = ref<ApiKeyQueryParams>({
     page: 1,
-    limit: 20
+    limit: 20,
+    isActive: true  // 默认显示活跃的API Keys
   });
   
   const accountFilters = ref<AccountQueryParams>({
@@ -39,15 +56,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const lastRefresh = ref<Date | null>(null);
   const isAutoRefresh = ref(true);
 
-  // 计算属性
+  // 计算属性 - 基于统计数据
   const activeApiKeys = computed(() => {
-    return apiKeys.value.filter(key => key.isActive);
+    return apiKeysStats.value.active;
   });
 
   const totalDailyCost = computed(() => {
-    return apiKeys.value.reduce((sum, key) => {
-      return sum + (key.usage?.today?.cost || 0);
-    }, 0);
+    return apiKeysStats.value.totalDailyCost;
   });
 
   const topUsageAccounts = computed(() => {
@@ -57,21 +72,74 @@ export const useDashboardStore = defineStore('dashboard', () => {
   });
 
   const activeAccountsCount = computed(() => {
-    return accounts.value.filter(account => account.isActive).length;
+    return accountsStats.value.active;
   });
 
   const totalTodayRequests = computed(() => {
-    return apiKeys.value.reduce((sum, key) => {
-      return sum + (key.usage?.today?.requests || 0);
-    }, 0);
+    return apiKeysStats.value.totalTodayRequests;
   });
 
   const averageRPM = computed(() => {
-    const totalRpm = apiKeys.value.reduce((sum, key) => sum + key.rpm, 0);
-    return apiKeys.value.length > 0 ? Math.round(totalRpm / apiKeys.value.length) : 0;
+    return apiKeysStats.value.averageRPM;
   });
 
   // Actions
+  // 获取API Keys统计数据
+  const fetchApiKeysStats = async () => {
+    try {
+      const response = await apiClient.get('/api/apikeys', {
+        params: { 
+          // 获取全量数据进行统计，不分页
+          page: 1,
+          limit: 10000  // 获取足够大的数据量
+        }
+      });
+      
+      if (response.data.success) {
+        const allApiKeys = response.data.data;
+        
+        // 计算统计数据
+        apiKeysStats.value = {
+          total: allApiKeys.length,
+          active: allApiKeys.filter((key: any) => key.isActive).length,
+          totalDailyCost: allApiKeys.reduce((sum: number, key: any) => {
+            return sum + (key.usage?.today?.cost || 0);
+          }, 0),
+          totalTodayRequests: allApiKeys.reduce((sum: number, key: any) => {
+            return sum + (key.usage?.today?.requests || 0);
+          }, 0),
+          averageRPM: allApiKeys.length > 0 ? 
+            Math.round(allApiKeys.reduce((sum: number, key: any) => sum + key.rpm, 0) / allApiKeys.length) : 0
+        };
+      }
+    } catch (err) {
+      console.error('Error fetching API keys stats:', err);
+    }
+  };
+
+  // 获取账号统计数据
+  const fetchAccountsStats = async () => {
+    try {
+      const response = await apiClient.get('/api/accounts', {
+        params: { 
+          page: 1,
+          limit: 10000
+        }
+      });
+      
+      if (response.data.success) {
+        const allAccounts = response.data.data;
+        
+        accountsStats.value = {
+          total: allAccounts.length,
+          active: allAccounts.filter((account: any) => account.isActive).length
+        };
+      }
+    } catch (err) {
+      console.error('Error fetching accounts stats:', err);
+    }
+  };
+
   const fetchApiKeys = async (filters: ApiKeyQueryParams = {}) => {
     try {
       loading.value = true;
@@ -240,8 +308,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
   // 初始化数据
   const initializeData = async () => {
     await Promise.all([
-      fetchApiKeys(),
-      fetchAccounts(), 
+      fetchApiKeysStats(),  // 获取统计数据
+      fetchAccountsStats(), // 获取统计数据
+      fetchApiKeys(),       // 获取分页数据
+      fetchAccounts(),      // 获取分页数据
       fetchGroups(),
       fetchSystemMetrics()
     ]);
@@ -258,8 +328,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (loading.value) return;
     
     await Promise.all([
-      fetchApiKeys(),
-      fetchAccounts(),
+      fetchApiKeysStats(),  // 刷新统计数据
+      fetchAccountsStats(), // 刷新统计数据
+      fetchApiKeys(),       // 刷新分页数据
+      fetchAccounts(),      // 刷新分页数据
       fetchSystemMetrics()
     ]);
   };
@@ -270,9 +342,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
   };
 
   return {
-    // 状态
+    // 分页数据（当前页）
     apiKeys,
     accounts,
+    
+    // 统计数据（全量）
+    apiKeysStats,
+    accountsStats,
+    
+    // 其他数据
     groups,
     systemMetrics,
     loading,
@@ -292,6 +370,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     averageRPM,
 
     // Actions
+    fetchApiKeysStats,
+    fetchAccountsStats,
     fetchApiKeys,
     fetchAccounts,
     fetchGroups,

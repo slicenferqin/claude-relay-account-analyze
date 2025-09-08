@@ -472,7 +472,6 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .accounts-view > .el-card:last-child :deep(.el-card__body) {
@@ -481,13 +480,13 @@ onMounted(() => {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 16px;
 }
 
 .accounts-view > .el-card:last-child :deep(.el-table) {
-  flex: none;
-  min-height: 300px;
-  max-height: calc(100vh - 420px);
+  flex: 1;
+  min-height: 400px;
+  max-height: calc(100vh - 350px);
   width: 100% !important;
 }
 
@@ -502,7 +501,7 @@ onMounted(() => {
 :deep(.el-table__body-wrapper) {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: calc(100vh - 450px);
+  max-height: calc(100vh - 350px);
 }
 
 :deep(.el-table__header-wrapper) {
@@ -688,10 +687,12 @@ onMounted(() => {
 
 /* 分页样式 */
 .pagination-wrapper {
-  margin-top: 20px;
+  margin-top: auto;
   padding: 16px 0;
   display: flex;
   justify-content: center;
   flex-shrink: 0;
+  background: #fff;
+  border-top: 1px solid #ebeef5;
 }
 </style>

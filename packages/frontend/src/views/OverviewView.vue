@@ -10,7 +10,7 @@
                 <el-icon><Key /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-number">{{ dashboardStore.apiKeys.length }}</div>
+                <div class="stat-number">{{ dashboardStore.apiKeysStats.total }}</div>
                 <div class="stat-title">API Keys总数</div>
                 <div class="stat-trend">
                   <el-icon class="trend-icon up"><ArrowUp /></el-icon>
@@ -64,8 +64,8 @@
                 <el-icon><User /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-number">{{ dashboardStore.activeAccountsCount }}</div>
-                <div class="stat-title">活跃账号</div>
+                <div class="stat-number">{{ dashboardStore.accountsStats.total }}</div>
+                <div class="stat-title">账号总数</div>
                 <div class="stat-trend">
                   <el-icon class="trend-icon up"><ArrowUp /></el-icon>
                   <span class="trend-text">+1.3%</span>
