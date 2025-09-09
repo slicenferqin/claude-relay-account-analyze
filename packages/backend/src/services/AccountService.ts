@@ -146,7 +146,7 @@ export class AccountService {
 
       // 获取账户今日所有模型的使用数据
       const pattern = `account_usage:model:daily:${accountId}:*:${today}`;
-      const modelKeys = await redisClient.keys(pattern);
+      const modelKeys = await redisClient.scanKeys(pattern);
 
       if (!modelKeys || modelKeys.length === 0) {
         logger.debug(`No model usage found for account ${accountId} on ${today}`);
