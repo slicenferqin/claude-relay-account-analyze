@@ -14,6 +14,7 @@ const path_1 = __importDefault(require("path"));
 const redis_1 = require("./config/redis");
 const logger_1 = require("./utils/logger");
 const RealtimeService_1 = require("./services/RealtimeService");
+const pricingService_1 = require("./services/pricingService");
 const api_1 = __importDefault(require("./routes/api"));
 // 加载环境变量
 dotenv_1.default.config();
@@ -132,6 +133,9 @@ class App {
             // 连接Redis
             await redis_1.redisClient.connect();
             logger_1.logger.info('Redis connected successfully');
+            // 初始化价格服务
+            await pricingService_1.pricingService.initialize();
+            logger_1.logger.info('Pricing service initialized successfully');
             // 启动实时服务
             this.realtimeService = new RealtimeService_1.RealtimeService(this.server);
             logger_1.logger.info('Realtime service initialized');
@@ -179,6 +183,9 @@ class App {
                 await this.realtimeService.close();
                 logger_1.logger.info('Realtime service closed');
             }
+            // 清理价格服务
+            pricingService_1.pricingService.cleanup();
+            logger_1.logger.info('Pricing service cleaned up');
             // 关闭Redis连接
             await redis_1.redisClient.disconnect();
             logger_1.logger.info('Redis connection closed');

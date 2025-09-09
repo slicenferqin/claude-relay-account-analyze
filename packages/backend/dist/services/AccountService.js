@@ -4,7 +4,13 @@ exports.AccountService = void 0;
 const shared_1 = require("@account-dashboard/shared");
 const redis_1 = require("../config/redis");
 const logger_1 = require("../utils/logger");
-const costCalculator_1 = require("../utils/costCalculator");
+const CostCalculator_1 = require("../utils/CostCalculator");
+/**
+ * 获取指定时区的日期字符串
+ */
+function getDateStringInTimezone(date = new Date(), timezone = 'Asia/Shanghai') {
+    return date.toLocaleDateString('en-CA', { timeZone: timezone });
+}
 class AccountService {
     /**
      * 获取账户基本信息
@@ -133,7 +139,7 @@ class AccountService {
      */
     async getAccountDailyCost(accountId, dateStr) {
         try {
-            const today = dateStr || (0, costCalculator_1.getDateStringInTimezone)();
+            const today = dateStr || getDateStringInTimezone();
             // 获取账户今日所有模型的使用数据
             const pattern = `account_usage:model:daily:${accountId}:*:${today}`;
             const modelKeys = await redis_1.redisClient.scanKeys(pattern);
@@ -156,8 +162,8 @@ class AccountService {
                         cache_creation_input_tokens: parseInt(modelUsage.cacheCreateTokens || '0'),
                         cache_read_input_tokens: parseInt(modelUsage.cacheReadTokens || '0')
                     };
-                    // 使用CostCalculator计算费用
-                    const costResult = costCalculator_1.CostCalculator.calculateCost(usage, model);
+                    // 使用原系统的CostCalculator计算费用
+                    const costResult = CostCalculator_1.CostCalculator.calculateCost(usage, model);
                     totalCost += costResult.costs.total;
                     logger_1.logger.debug(`💰 Account ${accountId} daily cost for model ${model}: ${costResult.costs.total}`, { usage, cost: costResult.costs });
                 }

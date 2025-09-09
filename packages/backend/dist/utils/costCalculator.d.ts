@@ -1,54 +1,105 @@
-/**
- * 获取指定时区的日期字符串
- * @param date 日期对象，默认为当前时间
- * @param timezone 时区，默认为UTC+8
- * @returns YYYY-MM-DD格式的日期字符串
- */
-export declare function getDateStringInTimezone(date?: Date, timezone?: string): string;
-/**
- * 费用计算器
- * 根据不同模型的token使用量计算费用
- */
-export declare class CostCalculator {
-    private static MODEL_PRICING;
-    /**
-     * 计算单个模型的使用费用
-     * @param usage Token使用情况
-     * @param model 模型名称
-     * @returns 费用计算结果
-     */
-    static calculateCost(usage: {
-        input_tokens: number;
-        output_tokens: number;
-        cache_creation_input_tokens: number;
-        cache_read_input_tokens: number;
-    }, model: string): {
-        costs: {
-            input: number;
-            output: number;
-            cache_create: number;
-            cache_read: number;
-            total: number;
-        };
-        pricing: any;
-        model: string;
-    };
-    /**
-     * 获取所有支持的模型列表
-     */
-    static getSupportedModels(): string[];
-    /**
-     * 获取模型的定价信息
-     */
-    static getModelPricing(model: string): any;
-    /**
-     * 添加或更新模型定价
-     */
-    static updateModelPricing(model: string, pricing: {
-        input_tokens: number;
-        output_tokens: number;
-        cache_creation_input_tokens: number;
-        cache_read_input_tokens: number;
-    }): void;
+interface ModelPricing {
+    input: number;
+    output: number;
+    cacheWrite: number;
+    cacheRead: number;
 }
-//# sourceMappingURL=costCalculator.d.ts.map
+interface Usage {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation?: {
+        ephemeral_5m_input_tokens?: number;
+        ephemeral_1h_input_tokens?: number;
+    };
+}
+interface AggregatedUsage {
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheCreateTokens?: number;
+    cacheReadTokens?: number;
+    totalInputTokens?: number;
+    totalOutputTokens?: number;
+    totalCacheCreateTokens?: number;
+    totalCacheReadTokens?: number;
+}
+interface CostResult {
+    model: string;
+    pricing: ModelPricing;
+    usingDynamicPricing: boolean;
+    isLongContextRequest?: boolean;
+    usage: {
+        inputTokens: number;
+        outputTokens: number;
+        cacheCreateTokens: number;
+        cacheReadTokens: number;
+        totalTokens: number;
+    };
+    costs: {
+        input: number;
+        output: number;
+        cacheWrite: number;
+        cacheRead: number;
+        total: number;
+    };
+    formatted: {
+        input: string;
+        output: string;
+        cacheWrite: string;
+        cacheRead: string;
+        total: string;
+    };
+    debug: {
+        isOpenAIModel: boolean;
+        hasCacheCreatePrice: boolean;
+        cacheCreateTokens: number;
+        cacheWritePriceUsed: number;
+        isLongContextModel?: boolean;
+        isLongContextRequest?: boolean;
+    };
+}
+interface CacheSavings {
+    normalCost: number;
+    cacheCost: number;
+    savings: number;
+    savingsPercentage: number;
+    formatted: {
+        normalCost: string;
+        cacheCost: string;
+        savings: string;
+        savingsPercentage: string;
+    };
+}
+export declare class CostCalculator {
+    /**
+     * 计算单次请求的费用
+     */
+    static calculateCost(usage: Usage, model?: string): CostResult;
+    /**
+     * 计算聚合使用量的费用
+     */
+    static calculateAggregatedCost(aggregatedUsage: AggregatedUsage, model?: string): CostResult;
+    /**
+     * 获取模型定价信息
+     */
+    static getModelPricing(model?: string): ModelPricing;
+    /**
+     * 获取所有支持的模型和定价
+     */
+    static getAllModelPricing(): Record<string, ModelPricing>;
+    /**
+     * 验证模型是否支持
+     */
+    static isModelSupported(model: string): boolean;
+    /**
+     * 格式化费用显示
+     */
+    static formatCost(cost: number, decimals?: number): string;
+    /**
+     * 计算费用节省（使用缓存的节省）
+     */
+    static calculateCacheSavings(usage: Usage, model?: string): CacheSavings;
+}
+export default CostCalculator;
+//# sourceMappingURL=CostCalculator.d.ts.map

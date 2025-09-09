@@ -1,174 +1,261 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CostCalculator = void 0;
-exports.getDateStringInTimezone = getDateStringInTimezone;
-const logger_1 = require("./logger");
-/**
- * 获取指定时区的日期字符串
- * @param date 日期对象，默认为当前时间
- * @param timezone 时区，默认为UTC+8
- * @returns YYYY-MM-DD格式的日期字符串
- */
-function getDateStringInTimezone(date = new Date(), timezone = 'Asia/Shanghai') {
-    return date.toLocaleDateString('en-CA', { timeZone: timezone }); // en-CA格式为YYYY-MM-DD
-}
-/**
- * 费用计算器
- * 根据不同模型的token使用量计算费用
- */
+const pricingService_1 = require("../services/pricingService");
+// Claude模型价格配置 (USD per 1M tokens) - 备用定价
+const MODEL_PRICING = {
+    // Claude 3.5 Sonnet
+    'claude-3-5-sonnet-20241022': {
+        input: 3.0,
+        output: 15.0,
+        cacheWrite: 3.75,
+        cacheRead: 0.3
+    },
+    'claude-sonnet-4-20250514': {
+        input: 3.0,
+        output: 15.0,
+        cacheWrite: 3.75,
+        cacheRead: 0.3
+    },
+    // Claude 3.5 Haiku
+    'claude-3-5-haiku-20241022': {
+        input: 0.25,
+        output: 1.25,
+        cacheWrite: 0.3,
+        cacheRead: 0.03
+    },
+    // Claude 3 Opus
+    'claude-3-opus-20240229': {
+        input: 15.0,
+        output: 75.0,
+        cacheWrite: 18.75,
+        cacheRead: 1.5
+    },
+    // Claude Opus 4.1 (新模型)
+    'claude-opus-4-1-20250805': {
+        input: 15.0,
+        output: 75.0,
+        cacheWrite: 18.75,
+        cacheRead: 1.5
+    },
+    // Claude 3 Sonnet
+    'claude-3-sonnet-20240229': {
+        input: 3.0,
+        output: 15.0,
+        cacheWrite: 3.75,
+        cacheRead: 0.3
+    },
+    // Claude 3 Haiku
+    'claude-3-haiku-20240307': {
+        input: 0.25,
+        output: 1.25,
+        cacheWrite: 0.3,
+        cacheRead: 0.03
+    },
+    // 默认定价（用于未知模型）
+    unknown: {
+        input: 3.0,
+        output: 15.0,
+        cacheWrite: 3.75,
+        cacheRead: 0.3
+    }
+};
 class CostCalculator {
     /**
-     * 计算单个模型的使用费用
-     * @param usage Token使用情况
-     * @param model 模型名称
-     * @returns 费用计算结果
+     * 计算单次请求的费用
      */
-    static calculateCost(usage, model) {
-        try {
-            // 获取模型定价，如果不存在则使用默认定价
-            const pricing = this.MODEL_PRICING[model] || this.MODEL_PRICING['default'];
-            // 计算各项费用（转换为每千token计费）
-            const inputCost = (usage.input_tokens / 1000) * pricing.input_tokens;
-            const outputCost = (usage.output_tokens / 1000) * pricing.output_tokens;
-            const cacheCreateCost = (usage.cache_creation_input_tokens / 1000) * pricing.cache_creation_input_tokens;
-            const cacheReadCost = (usage.cache_read_input_tokens / 1000) * pricing.cache_read_input_tokens;
-            const totalCost = inputCost + outputCost + cacheCreateCost + cacheReadCost;
-            const result = {
-                costs: {
-                    input: inputCost,
-                    output: outputCost,
-                    cache_create: cacheCreateCost,
-                    cache_read: cacheReadCost,
-                    total: totalCost
-                },
-                pricing,
-                model
-            };
-            logger_1.logger.debug(`Cost calculation for ${model}:`, {
-                usage,
-                result: result.costs
-            });
-            return result;
-        }
-        catch (error) {
-            logger_1.logger.error(`Error calculating cost for model ${model}:`, error);
+    static calculateCost(usage, model = 'unknown') {
+        // 如果 usage 包含详细的 cache_creation 对象或是 1M 模型，使用 pricingService 来处理
+        if ((usage.cache_creation && typeof usage.cache_creation === 'object') ||
+            (model && model.includes('[1m]'))) {
+            const result = pricingService_1.pricingService.calculateCost(usage, model);
+            // 转换 pricingService 返回的格式到 costCalculator 的格式
             return {
-                costs: {
-                    input: 0,
-                    output: 0,
-                    cache_create: 0,
-                    cache_read: 0,
-                    total: 0
+                model,
+                pricing: {
+                    input: result.pricing.input * 1000000, // 转换为 per 1M tokens
+                    output: result.pricing.output * 1000000,
+                    cacheWrite: result.pricing.cacheCreate * 1000000,
+                    cacheRead: result.pricing.cacheRead * 1000000
                 },
-                pricing: this.MODEL_PRICING['default'],
-                model
+                usingDynamicPricing: true,
+                isLongContextRequest: result.isLongContextRequest || false,
+                usage: {
+                    inputTokens: usage.input_tokens || 0,
+                    outputTokens: usage.output_tokens || 0,
+                    cacheCreateTokens: usage.cache_creation_input_tokens || 0,
+                    cacheReadTokens: usage.cache_read_input_tokens || 0,
+                    totalTokens: (usage.input_tokens || 0) +
+                        (usage.output_tokens || 0) +
+                        (usage.cache_creation_input_tokens || 0) +
+                        (usage.cache_read_input_tokens || 0)
+                },
+                costs: {
+                    input: result.inputCost,
+                    output: result.outputCost,
+                    cacheWrite: result.cacheCreateCost,
+                    cacheRead: result.cacheReadCost,
+                    total: result.totalCost
+                },
+                formatted: {
+                    input: this.formatCost(result.inputCost),
+                    output: this.formatCost(result.outputCost),
+                    cacheWrite: this.formatCost(result.cacheCreateCost),
+                    cacheRead: this.formatCost(result.cacheReadCost),
+                    total: this.formatCost(result.totalCost)
+                },
+                debug: {
+                    isOpenAIModel: model.includes('gpt') || model.includes('o1'),
+                    hasCacheCreatePrice: !!result.pricing.cacheCreate,
+                    cacheCreateTokens: usage.cache_creation_input_tokens || 0,
+                    cacheWritePriceUsed: result.pricing.cacheCreate * 1000000,
+                    isLongContextModel: !!(model && model.includes('[1m]')),
+                    isLongContextRequest: result.isLongContextRequest || false
+                }
             };
+        }
+        // 否则使用旧的逻辑（向后兼容）
+        const inputTokens = usage.input_tokens || 0;
+        const outputTokens = usage.output_tokens || 0;
+        const cacheCreateTokens = usage.cache_creation_input_tokens || 0;
+        const cacheReadTokens = usage.cache_read_input_tokens || 0;
+        // 优先使用动态价格服务
+        const pricingData = pricingService_1.pricingService.getModelPricing(model);
+        let pricing;
+        let usingDynamicPricing = false;
+        if (pricingData) {
+            // 转换动态价格格式为内部格式
+            const inputPrice = (pricingData.input_cost_per_token || 0) * 1000000; // 转换为per 1M tokens
+            const outputPrice = (pricingData.output_cost_per_token || 0) * 1000000;
+            const cacheReadPrice = (pricingData.cache_read_input_token_cost || 0) * 1000000;
+            // OpenAI 模型的特殊处理：
+            let cacheWritePrice = (pricingData.cache_creation_input_token_cost || 0) * 1000000;
+            // 检测是否为 OpenAI 模型
+            const isOpenAIModel = model.includes('gpt') || model.includes('o1') || pricingData.litellm_provider === 'openai';
+            if (isOpenAIModel && !pricingData.cache_creation_input_token_cost && cacheCreateTokens > 0) {
+                // OpenAI 模型：缓存创建按普通 input 价格计费
+                cacheWritePrice = inputPrice;
+            }
+            pricing = {
+                input: inputPrice,
+                output: outputPrice,
+                cacheWrite: cacheWritePrice,
+                cacheRead: cacheReadPrice
+            };
+            usingDynamicPricing = true;
+        }
+        else {
+            // 回退到静态价格
+            pricing = MODEL_PRICING[model] || MODEL_PRICING['unknown'];
+        }
+        // 计算各类型token的费用 (USD)
+        const inputCost = (inputTokens / 1000000) * pricing.input;
+        const outputCost = (outputTokens / 1000000) * pricing.output;
+        const cacheWriteCost = (cacheCreateTokens / 1000000) * pricing.cacheWrite;
+        const cacheReadCost = (cacheReadTokens / 1000000) * pricing.cacheRead;
+        const totalCost = inputCost + outputCost + cacheWriteCost + cacheReadCost;
+        return {
+            model,
+            pricing,
+            usingDynamicPricing,
+            usage: {
+                inputTokens,
+                outputTokens,
+                cacheCreateTokens,
+                cacheReadTokens,
+                totalTokens: inputTokens + outputTokens + cacheCreateTokens + cacheReadTokens
+            },
+            costs: {
+                input: inputCost,
+                output: outputCost,
+                cacheWrite: cacheWriteCost,
+                cacheRead: cacheReadCost,
+                total: totalCost
+            },
+            formatted: {
+                input: this.formatCost(inputCost),
+                output: this.formatCost(outputCost),
+                cacheWrite: this.formatCost(cacheWriteCost),
+                cacheRead: this.formatCost(cacheReadCost),
+                total: this.formatCost(totalCost)
+            },
+            debug: {
+                isOpenAIModel: model.includes('gpt') || model.includes('o1'),
+                hasCacheCreatePrice: !!pricingData?.cache_creation_input_token_cost,
+                cacheCreateTokens,
+                cacheWritePriceUsed: pricing.cacheWrite
+            }
+        };
+    }
+    /**
+     * 计算聚合使用量的费用
+     */
+    static calculateAggregatedCost(aggregatedUsage, model = 'unknown') {
+        const usage = {
+            input_tokens: aggregatedUsage.inputTokens || aggregatedUsage.totalInputTokens || 0,
+            output_tokens: aggregatedUsage.outputTokens || aggregatedUsage.totalOutputTokens || 0,
+            cache_creation_input_tokens: aggregatedUsage.cacheCreateTokens || aggregatedUsage.totalCacheCreateTokens || 0,
+            cache_read_input_tokens: aggregatedUsage.cacheReadTokens || aggregatedUsage.totalCacheReadTokens || 0
+        };
+        return this.calculateCost(usage, model);
+    }
+    /**
+     * 获取模型定价信息
+     */
+    static getModelPricing(model = 'unknown') {
+        return MODEL_PRICING[model] || MODEL_PRICING['unknown'];
+    }
+    /**
+     * 获取所有支持的模型和定价
+     */
+    static getAllModelPricing() {
+        return { ...MODEL_PRICING };
+    }
+    /**
+     * 验证模型是否支持
+     */
+    static isModelSupported(model) {
+        return !!MODEL_PRICING[model];
+    }
+    /**
+     * 格式化费用显示
+     */
+    static formatCost(cost, decimals = 6) {
+        if (cost >= 1) {
+            return `$${cost.toFixed(2)}`;
+        }
+        else if (cost >= 0.001) {
+            return `$${cost.toFixed(4)}`;
+        }
+        else {
+            return `$${cost.toFixed(decimals)}`;
         }
     }
     /**
-     * 获取所有支持的模型列表
+     * 计算费用节省（使用缓存的节省）
      */
-    static getSupportedModels() {
-        return Object.keys(this.MODEL_PRICING).filter(model => model !== 'default');
-    }
-    /**
-     * 获取模型的定价信息
-     */
-    static getModelPricing(model) {
-        return this.MODEL_PRICING[model] || this.MODEL_PRICING['default'];
-    }
-    /**
-     * 添加或更新模型定价
-     */
-    static updateModelPricing(model, pricing) {
-        this.MODEL_PRICING[model] = pricing;
-        logger_1.logger.info(`Updated pricing for model ${model}`, pricing);
+    static calculateCacheSavings(usage, model = 'unknown') {
+        const pricing = this.getModelPricing(model);
+        const cacheReadTokens = usage.cache_read_input_tokens || 0;
+        // 如果这些token不使用缓存，需要按正常input价格计费
+        const normalCost = (cacheReadTokens / 1000000) * pricing.input;
+        const cacheCost = (cacheReadTokens / 1000000) * pricing.cacheRead;
+        const savings = normalCost - cacheCost;
+        const savingsPercentage = normalCost > 0 ? (savings / normalCost) * 100 : 0;
+        return {
+            normalCost,
+            cacheCost,
+            savings,
+            savingsPercentage,
+            formatted: {
+                normalCost: this.formatCost(normalCost),
+                cacheCost: this.formatCost(cacheCost),
+                savings: this.formatCost(savings),
+                savingsPercentage: `${savingsPercentage.toFixed(1)}%`
+            }
+        };
     }
 }
 exports.CostCalculator = CostCalculator;
-// 模型定价表（每千个token的价格）
-CostCalculator.MODEL_PRICING = {
-    // Claude模型
-    'claude-3-5-sonnet-20241022': {
-        input_tokens: 0.003, // $3 per million tokens
-        output_tokens: 0.015, // $15 per million tokens
-        cache_creation_input_tokens: 0.00375, // $3.75 per million tokens
-        cache_read_input_tokens: 0.0003 // $0.3 per million tokens
-    },
-    'claude-3-5-sonnet-20240620': {
-        input_tokens: 0.003,
-        output_tokens: 0.015,
-        cache_creation_input_tokens: 0.00375,
-        cache_read_input_tokens: 0.0003
-    },
-    'claude-3-5-haiku-20241022': {
-        input_tokens: 0.001, // $1 per million tokens
-        output_tokens: 0.005, // $5 per million tokens
-        cache_creation_input_tokens: 0.00125,
-        cache_read_input_tokens: 0.0001
-    },
-    'claude-3-opus-20240229': {
-        input_tokens: 0.015, // $15 per million tokens
-        output_tokens: 0.075, // $75 per million tokens
-        cache_creation_input_tokens: 0.01875,
-        cache_read_input_tokens: 0.0015
-    },
-    'claude-3-sonnet-20240229': {
-        input_tokens: 0.003, // $3 per million tokens
-        output_tokens: 0.015, // $15 per million tokens
-        cache_creation_input_tokens: 0.00375,
-        cache_read_input_tokens: 0.0003
-    },
-    'claude-3-haiku-20240307': {
-        input_tokens: 0.00025, // $0.25 per million tokens
-        output_tokens: 0.00125, // $1.25 per million tokens
-        cache_creation_input_tokens: 0.0003,
-        cache_read_input_tokens: 0.000025
-    },
-    // OpenAI模型
-    'gpt-4o': {
-        input_tokens: 0.005, // $5 per million tokens
-        output_tokens: 0.015, // $15 per million tokens
-        cache_creation_input_tokens: 0.005,
-        cache_read_input_tokens: 0.005
-    },
-    'gpt-4o-mini': {
-        input_tokens: 0.00015, // $0.15 per million tokens
-        output_tokens: 0.0006, // $0.6 per million tokens
-        cache_creation_input_tokens: 0.00015,
-        cache_read_input_tokens: 0.00015
-    },
-    'gpt-4-turbo': {
-        input_tokens: 0.01, // $10 per million tokens
-        output_tokens: 0.03, // $30 per million tokens
-        cache_creation_input_tokens: 0.01,
-        cache_read_input_tokens: 0.01
-    },
-    'gpt-3.5-turbo': {
-        input_tokens: 0.0005, // $0.5 per million tokens
-        output_tokens: 0.0015, // $1.5 per million tokens
-        cache_creation_input_tokens: 0.0005,
-        cache_read_input_tokens: 0.0005
-    },
-    // Gemini模型
-    'gemini-1.5-pro': {
-        input_tokens: 0.00125, // $1.25 per million tokens
-        output_tokens: 0.005, // $5 per million tokens
-        cache_creation_input_tokens: 0.00125,
-        cache_read_input_tokens: 0.00125
-    },
-    'gemini-1.5-flash': {
-        input_tokens: 0.00075, // $0.075 per million tokens
-        output_tokens: 0.0003, // $0.3 per million tokens
-        cache_creation_input_tokens: 0.00075,
-        cache_read_input_tokens: 0.00075
-    },
-    // 默认定价（当模型不在列表中时使用）
-    'default': {
-        input_tokens: 0.001,
-        output_tokens: 0.002,
-        cache_creation_input_tokens: 0.001,
-        cache_read_input_tokens: 0.0001
-    }
-};
-//# sourceMappingURL=costCalculator.js.map
+exports.default = CostCalculator;
+//# sourceMappingURL=CostCalculator.js.map

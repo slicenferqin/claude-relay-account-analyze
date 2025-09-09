@@ -9,6 +9,7 @@ import path from 'path';
 import { redisClient } from './config/redis';
 import { logger } from './utils/logger';
 import { RealtimeService } from './services/RealtimeService';
+import { pricingService } from './services/pricingService';
 import apiRoutes from './routes/api';
 
 // 加载环境变量
@@ -153,6 +154,10 @@ export class App {
       await redisClient.connect();
       logger.info('Redis connected successfully');
 
+      // 初始化价格服务
+      await pricingService.initialize();
+      logger.info('Pricing service initialized successfully');
+
       // 启动实时服务
       this.realtimeService = new RealtimeService(this.server);
       logger.info('Realtime service initialized');
@@ -204,6 +209,10 @@ export class App {
         await this.realtimeService.close();
         logger.info('Realtime service closed');
       }
+
+      // 清理价格服务
+      pricingService.cleanup();
+      logger.info('Pricing service cleaned up');
 
       // 关闭Redis连接
       await redisClient.disconnect();

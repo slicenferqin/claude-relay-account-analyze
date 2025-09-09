@@ -7,7 +7,14 @@ import {
 } from '@account-dashboard/shared';
 import { redisClient } from '../config/redis';
 import { logger } from '../utils/logger';
-import { CostCalculator, getDateStringInTimezone } from '../utils/costCalculator';
+import { CostCalculator } from '../utils/CostCalculator';
+
+/**
+ * 获取指定时区的日期字符串
+ */
+function getDateStringInTimezone(date: Date = new Date(), timezone: string = 'Asia/Shanghai'): string {
+  return date.toLocaleDateString('en-CA', { timeZone: timezone });
+}
 
 export class AccountService {
 
@@ -172,7 +179,7 @@ export class AccountService {
             cache_read_input_tokens: parseInt(modelUsage.cacheReadTokens || '0')
           };
 
-          // 使用CostCalculator计算费用
+          // 使用原系统的CostCalculator计算费用
           const costResult = CostCalculator.calculateCost(usage, model);
           totalCost += costResult.costs.total;
 
