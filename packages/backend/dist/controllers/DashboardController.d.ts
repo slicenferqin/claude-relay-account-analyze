@@ -46,9 +46,10 @@ export declare class DashboardController {
     private filterApiKeys;
     private searchApiKeys;
     private sortApiKeyStatistics;
+    private sortAccountStatistics;
+    private getNestedValue;
     private filterAccounts;
     private searchAccounts;
-    private sortAccountStatistics;
     private getGroupApiKeys;
 }
 //# sourceMappingURL=DashboardController.d.ts.map

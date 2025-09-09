@@ -25,29 +25,29 @@ class DashboardController {
             if (query.search) {
                 keyIds = await this.searchApiKeys(keyIds, query.search);
             }
+            // 获取统计信息
+            const statistics = await this.redisDataService.getMultipleApiKeyStatistics(keyIds);
+            // 应用排序（默认按最后使用时间降序）
+            const sortField = query.sort || 'lastUsedAt';
+            const sortOrder = query.order || 'desc';
+            this.sortApiKeyStatistics(statistics, sortField, sortOrder);
             // 应用分页
             const page = parseInt(query.page?.toString() || '1');
             const limit = parseInt(query.limit?.toString() || '20');
             const startIndex = (page - 1) * limit;
             const endIndex = startIndex + limit;
-            const paginatedKeyIds = keyIds.slice(startIndex, endIndex);
-            // 获取统计信息
-            const statistics = await this.redisDataService.getMultipleApiKeyStatistics(paginatedKeyIds);
-            // 应用排序
-            if (query.sort) {
-                this.sortApiKeyStatistics(statistics, query.sort, query.order || 'desc');
-            }
+            const paginatedStatistics = statistics.slice(startIndex, endIndex);
             const response = {
                 success: true,
-                data: statistics,
+                data: paginatedStatistics,
                 timestamp: new Date().toISOString()
             };
             if (query.page && query.limit) {
                 response.pagination = {
                     page,
                     limit,
-                    total: keyIds.length,
-                    totalPages: Math.ceil(keyIds.length / limit)
+                    total: statistics.length, // 使用排序后的总数
+                    totalPages: Math.ceil(statistics.length / limit)
                 };
             }
             res.json(response);
@@ -134,29 +134,29 @@ class DashboardController {
             if (query.search) {
                 accountIds = await this.searchAccounts(accountIds, query.search);
             }
+            // 获取统计信息
+            const statistics = await this.accountService.getMultipleAccountStatistics(accountIds);
+            // 应用排序（默认按最后使用时间降序）
+            const sortField = query.sort || 'lastUsedAt';
+            const sortOrder = query.order || 'desc';
+            this.sortAccountStatistics(statistics, sortField, sortOrder);
             // 应用分页
             const page = parseInt(query.page?.toString() || '1');
             const limit = parseInt(query.limit?.toString() || '20');
             const startIndex = (page - 1) * limit;
             const endIndex = startIndex + limit;
-            const paginatedAccountIds = accountIds.slice(startIndex, endIndex);
-            // 获取统计信息
-            const statistics = await this.accountService.getMultipleAccountStatistics(paginatedAccountIds);
-            // 应用排序
-            if (query.sort) {
-                this.sortAccountStatistics(statistics, query.sort, query.order || 'desc');
-            }
+            const paginatedStatistics = statistics.slice(startIndex, endIndex);
             const response = {
                 success: true,
-                data: statistics,
+                data: paginatedStatistics,
                 timestamp: new Date().toISOString()
             };
             if (query.page && query.limit) {
                 response.pagination = {
                     page,
                     limit,
-                    total: accountIds.length,
-                    totalPages: Math.ceil(accountIds.length / limit)
+                    total: statistics.length, // 使用排序后的总数
+                    totalPages: Math.ceil(statistics.length / limit)
                 };
             }
             res.json(response);
@@ -367,19 +367,71 @@ class DashboardController {
     }
     sortApiKeyStatistics(statistics, sort, order) {
         statistics.sort((a, b) => {
-            let aVal = a[sort];
-            let bVal = b[sort];
-            if (typeof aVal === 'string') {
-                aVal = aVal.toLowerCase();
-                bVal = bVal.toLowerCase();
+            let aVal = this.getNestedValue(a, sort);
+            let bVal = this.getNestedValue(b, sort);
+            // 处理时间字段
+            if (sort === 'lastUsedAt' || sort.includes('time') || sort.includes('date')) {
+                aVal = aVal ? new Date(aVal).getTime() : 0;
+                bVal = bVal ? new Date(bVal).getTime() : 0;
             }
+            // 处理数值字段
+            else if (sort === 'rpm' || sort.includes('cost') || sort.includes('usage') || sort.includes('tokens') || sort.includes('requests')) {
+                aVal = parseFloat(aVal) || 0;
+                bVal = parseFloat(bVal) || 0;
+            }
+            // 处理字符串字段
+            else if (typeof aVal === 'string') {
+                aVal = aVal.toLowerCase();
+                bVal = bVal ? bVal.toLowerCase() : '';
+            }
+            // 处理null/undefined值
+            if (aVal === null || aVal === undefined)
+                aVal = 0;
+            if (bVal === null || bVal === undefined)
+                bVal = 0;
             if (order === 'asc') {
-                return aVal > bVal ? 1 : -1;
+                return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
             }
             else {
-                return aVal < bVal ? 1 : -1;
+                return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
             }
         });
+    }
+    sortAccountStatistics(statistics, sort, order) {
+        statistics.sort((a, b) => {
+            let aVal = this.getNestedValue(a, sort);
+            let bVal = this.getNestedValue(b, sort);
+            // 处理时间字段
+            if (sort === 'lastUsedAt' || sort.includes('time') || sort.includes('date')) {
+                aVal = aVal ? new Date(aVal).getTime() : 0;
+                bVal = bVal ? new Date(bVal).getTime() : 0;
+            }
+            // 处理数值字段
+            else if (sort.includes('expense') || sort.includes('cost') || sort.includes('usage') || sort.includes('tokens') || sort === 'recentAvgRpm') {
+                aVal = parseFloat(aVal) || 0;
+                bVal = parseFloat(bVal) || 0;
+            }
+            // 处理字符串字段
+            else if (typeof aVal === 'string') {
+                aVal = aVal.toLowerCase();
+                bVal = bVal ? bVal.toLowerCase() : '';
+            }
+            // 处理null/undefined值
+            if (aVal === null || aVal === undefined)
+                aVal = 0;
+            if (bVal === null || bVal === undefined)
+                bVal = 0;
+            if (order === 'asc') {
+                return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+            }
+            else {
+                return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+            }
+        });
+    }
+    // 辅助方法：获取嵌套属性值
+    getNestedValue(obj, path) {
+        return path.split('.').reduce((current, key) => current && current[key], obj);
     }
     async filterAccounts(accountIds, query) {
         const filtered = [];
@@ -408,22 +460,6 @@ class DashboardController {
             }
         }
         return filtered;
-    }
-    sortAccountStatistics(statistics, sort, order) {
-        statistics.sort((a, b) => {
-            let aVal = a[sort];
-            let bVal = b[sort];
-            if (typeof aVal === 'string') {
-                aVal = aVal.toLowerCase();
-                bVal = bVal.toLowerCase();
-            }
-            if (order === 'asc') {
-                return aVal > bVal ? 1 : -1;
-            }
-            else {
-                return aVal < bVal ? 1 : -1;
-            }
-        });
     }
     async getGroupApiKeys(groupId) {
         try {

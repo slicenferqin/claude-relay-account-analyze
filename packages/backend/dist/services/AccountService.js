@@ -4,6 +4,7 @@ exports.AccountService = void 0;
 const shared_1 = require("@account-dashboard/shared");
 const redis_1 = require("../config/redis");
 const logger_1 = require("../utils/logger");
+const costCalculator_1 = require("../utils/costCalculator");
 class AccountService {
     /**
      * 获取账户基本信息
@@ -127,22 +128,70 @@ class AccountService {
         }
     }
     /**
+     * 基于原系统逻辑的账户日费用计算
+     * 根据各模型的使用数据和定价计算总费用
+     */
+    async getAccountDailyCost(accountId, dateStr) {
+        try {
+            const today = dateStr || (0, costCalculator_1.getDateStringInTimezone)();
+            // 获取账户今日所有模型的使用数据
+            const pattern = `account_usage:model:daily:${accountId}:*:${today}`;
+            const modelKeys = await redis_1.redisClient.scanKeys(pattern);
+            if (!modelKeys || modelKeys.length === 0) {
+                logger_1.logger.debug(`No model usage found for account ${accountId} on ${today}`);
+                return 0;
+            }
+            let totalCost = 0;
+            for (const key of modelKeys) {
+                // 从key中解析模型名称
+                // 格式：account_usage:model:daily:{accountId}:{model}:{date}
+                const parts = key.split(':');
+                const model = parts[4]; // 模型名在第5个位置（索引4）
+                // 获取该模型的使用数据
+                const modelUsage = await redis_1.redisClient.hgetall(key);
+                if (modelUsage && (modelUsage.inputTokens || modelUsage.outputTokens)) {
+                    const usage = {
+                        input_tokens: parseInt(modelUsage.inputTokens || '0'),
+                        output_tokens: parseInt(modelUsage.outputTokens || '0'),
+                        cache_creation_input_tokens: parseInt(modelUsage.cacheCreateTokens || '0'),
+                        cache_read_input_tokens: parseInt(modelUsage.cacheReadTokens || '0')
+                    };
+                    // 使用CostCalculator计算费用
+                    const costResult = costCalculator_1.CostCalculator.calculateCost(usage, model);
+                    totalCost += costResult.costs.total;
+                    logger_1.logger.debug(`💰 Account ${accountId} daily cost for model ${model}: ${costResult.costs.total}`, { usage, cost: costResult.costs });
+                }
+            }
+            logger_1.logger.debug(`💰 Account ${accountId} total daily cost: ${totalCost}`);
+            return totalCost;
+        }
+        catch (error) {
+            logger_1.logger.error(`Error calculating account daily cost for ${accountId}:`, error);
+            return 0;
+        }
+    }
+    /**
      * 获取账户关联的API Keys并计算费用
      */
     async calculateAccountDailyCost(accountId, date) {
         try {
-            // 方案1：直接从账户的usage中获取cost
+            // 优先使用基于模型使用数据的计算方式
+            const modelBasedCost = await this.getAccountDailyCost(accountId, date);
+            if (modelBasedCost > 0) {
+                return modelBasedCost;
+            }
+            // 方案2：直接从账户的usage中获取cost
             const dailyKey = `account_usage:daily:${accountId}:${date}`;
             const costFromUsage = await redis_1.redisClient.hget(dailyKey, 'cost');
             if (costFromUsage) {
                 return parseFloat(costFromUsage);
             }
-            // 方案2：通过账号下的用户聚合费用
+            // 方案3：通过账号下的用户聚合费用
             const userCosts = await this.calculateAccountUsersCost(accountId, date);
             if (userCosts > 0) {
                 return userCosts;
             }
-            // 方案3：从关联的API Keys累加费用（备选方案）
+            // 方案4：从关联的API Keys累加费用（备选方案）
             const apiKeys = await this.getAccountApiKeys(accountId);
             const costPromises = apiKeys.map(async (keyId) => {
                 // 尝试多个可能的key格式

@@ -17,6 +17,11 @@ export declare class AccountService {
      */
     calculateAccountRPM(accountId: string, minutes?: number): Promise<number>;
     /**
+     * 基于原系统逻辑的账户日费用计算
+     * 根据各模型的使用数据和定价计算总费用
+     */
+    getAccountDailyCost(accountId: string, dateStr?: string): Promise<number>;
+    /**
      * 获取账户关联的API Keys并计算费用
      */
     calculateAccountDailyCost(accountId: string, date: string): Promise<number>;
